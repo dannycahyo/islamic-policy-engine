@@ -12,7 +12,41 @@
 
 ---
 
-Update the **Status** column as work progresses. Each phase should be completed and verified before moving to the next, though Phases 3–5 (backend) and Phases 6–8 (frontend) can run in parallel once Phase 2 is done.
+## Execution Strategy
+
+This plan is organized into **two parallel tracks** that converge at the end. After the shared foundation (Phases 1–2), backend and frontend work can happen simultaneously.
+
+```
+                          ┌─────────────────── BACKEND TRACK ───────────────────┐
+                          │                                                     │
+Phase 1 ──► Phase 2 ──┬──► Phase 3 ──► Phase 4 ──► Phase 5 ──┐               │
+       Shared Foundation│                                       ├──► Phase 9    │
+                        └──► Phase 6 ──► Phase 7 ──► Phase 8 ──┘  (converge)  │
+                          │                                                     │
+                          └────────────────── FRONTEND TRACK ───────────────────┘
+```
+
+**Backend Track** (Phases 3 → 4 → 5): Drools engine, evaluation API, rule management API, integration tests. These phases are sequential — each builds on the previous.
+
+**Frontend Track** (Phases 6 → 7 → 8): Dashboard scaffolding, rule management UI, testing & audit pages. Phase 6 can start as soon as Phase 1 is done (it doesn't need the domain model). Phases 7–8 need the backend API (Phase 5) to be ready for real data.
+
+**Convergence** (Phase 9): Both tracks must be complete before final end-to-end verification.
+
+### When to Start Each Phase
+
+| Phase | Can Start When...                          | Track    |
+| ----- | ------------------------------------------ | -------- |
+| 1     | Immediately                                | Shared   |
+| 2     | Phase 1 is done                            | Shared   |
+| 3     | Phase 2 is done                            | Backend  |
+| 4     | Phase 3 is done                            | Backend  |
+| 5     | Phase 4 is done                            | Backend  |
+| 6     | Phase 1 is done (parallel with Phase 2–3)  | Frontend |
+| 7     | Phase 5 **and** Phase 6 are done           | Frontend |
+| 8     | Phase 7 is done                            | Frontend |
+| 9     | Phase 5 **and** Phase 8 are done           | Both     |
+
+---
 
 ### Status Legend
 
@@ -26,7 +60,7 @@ Update the **Status** column as work progresses. Each phase should be completed 
 
 ---
 
-## Phase 1: Project Scaffolding & Configuration
+## Phase 1: Project Scaffolding & Configuration `[Shared]`
 
 Bootstrap the Spring Boot project with all dependencies and infrastructure config. By the end of this phase, `mvn compile` succeeds and Docker Compose starts PostgreSQL + an empty Spring Boot app.
 
@@ -43,7 +77,7 @@ Bootstrap the Spring Boot project with all dependencies and infrastructure confi
 
 ---
 
-## Phase 2: Database Schema & Domain Model
+## Phase 2: Database Schema & Domain Model `[Shared]`
 
 Define the database schema via Liquibase and create all JPA entities, enums, fact classes, and DTOs. By the end of this phase, the app starts with tables created and the domain model is compile-ready.
 
@@ -61,7 +95,7 @@ Define the database schema via Liquibase and create all JPA entities, enums, fac
 
 ---
 
-## Phase 3: Drools Engine & Rule Definitions
+## Phase 3: Drools Engine & Rule Definitions `[Backend Track]`
 
 Build the core Drools integration: DRL compilation, caching, validation, and the three rule definitions. By the end of this phase, rules can be compiled and fired in-memory.
 
@@ -78,7 +112,7 @@ Build the core Drools integration: DRL compilation, caching, validation, and the
 
 ---
 
-## Phase 4: Policy Evaluation API & Unit Tests
+## Phase 4: Policy Evaluation API & Unit Tests `[Backend Track]`
 
 Wire up the evaluation endpoint and prove all three rules work correctly with unit tests. By the end of this phase, the core use case (call API → Drools evaluates → return result) works.
 
@@ -96,7 +130,7 @@ Wire up the evaluation endpoint and prove all three rules work correctly with un
 
 ---
 
-## Phase 5: Rule Management & Audit API
+## Phase 5: Rule Management & Audit API `[Backend Track]`
 
 Add the CRUD endpoints for rule management and the audit log query endpoint. By the end of this phase, the full backend API is functional.
 
@@ -114,7 +148,7 @@ Add the CRUD endpoints for rule management and the audit log query endpoint. By 
 
 ---
 
-## Phase 6: Dashboard Foundation & Layout
+## Phase 6: Dashboard Foundation & Layout `[Frontend Track]`
 
 Scaffold the React Router V7 project and build the shell (sidebar, header, routing). By the end of this phase, navigation works and the API client can talk to the backend.
 
@@ -130,7 +164,7 @@ Scaffold the React Router V7 project and build the shell (sidebar, header, routi
 
 ---
 
-## Phase 7: Dashboard — Rule Management Pages
+## Phase 7: Dashboard — Rule Management Pages `[Frontend Track]`
 
 Build the core rule management UI: listing, detail editing, and the DRL code editor. By the end of this phase, admins can view and modify rules from the browser.
 
@@ -146,7 +180,7 @@ Build the core rule management UI: listing, detail editing, and the DRL code edi
 
 ---
 
-## Phase 8: Dashboard — Testing, Audit & Polish
+## Phase 8: Dashboard — Testing, Audit & Polish `[Frontend Track]`
 
 Build the remaining pages (dry-run testing, audit log) and polish the overall UI. By the end of this phase, the dashboard is feature-complete.
 
@@ -161,7 +195,7 @@ Build the remaining pages (dry-run testing, audit log) and polish the overall UI
 
 ---
 
-## Phase 9: End-to-End Verification & Documentation
+## Phase 9: End-to-End Verification & Documentation `[Convergence]`
 
 Run the full stack via Docker Compose and verify every success criterion from the PRD. Finalize documentation.
 
@@ -180,24 +214,16 @@ Run the full stack via Docker Compose and verify every success criterion from th
 
 ## Phase Summary
 
-| Phase | Name                              | Tasks | Depends On    |
-| ----- | --------------------------------- | ----- | ------------- |
-| 1     | Project Scaffolding & Config      | 6     | —             |
-| 2     | Database Schema & Domain Model    | 7     | Phase 1       |
-| 3     | Drools Engine & Rule Definitions  | 6     | Phase 2       |
-| 4     | Policy Evaluation API & Tests     | 7     | Phase 3       |
-| 5     | Rule Management & Audit API       | 7     | Phase 4       |
-| 6     | Dashboard Foundation & Layout     | 5     | Phase 1       |
-| 7     | Dashboard — Rule Management Pages | 5     | Phase 5 + 6   |
-| 8     | Dashboard — Testing, Audit & Polish | 4   | Phase 7       |
-| 9     | End-to-End Verification & Docs    | 6     | Phase 5 + 8   |
+| Phase | Name                                | Track    | Tasks | Depends On   |
+| ----- | ----------------------------------- | -------- | ----- | ------------ |
+| 1     | Project Scaffolding & Config        | Shared   | 6     | —            |
+| 2     | Database Schema & Domain Model      | Shared   | 7     | Phase 1      |
+| 3     | Drools Engine & Rule Definitions    | Backend  | 6     | Phase 2      |
+| 4     | Policy Evaluation API & Tests       | Backend  | 7     | Phase 3      |
+| 5     | Rule Management & Audit API         | Backend  | 7     | Phase 4      |
+| 6     | Dashboard Foundation & Layout       | Frontend | 5     | Phase 1      |
+| 7     | Dashboard — Rule Management Pages   | Frontend | 5     | Phase 5 + 6  |
+| 8     | Dashboard — Testing, Audit & Polish | Frontend | 4     | Phase 7      |
+| 9     | End-to-End Verification & Docs      | Both     | 6     | Phase 5 + 8  |
 
-**Total: 53 tasks across 9 phases**
-
-```
-Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 ──► Phase 5 ──┐
-                                                             ├──► Phase 9
-Phase 1 ──► Phase 6 ──────────────► Phase 7 ──► Phase 8 ──┘
-```
-
-Backend (Phases 1–5) and frontend foundation (Phase 6) can run in parallel. Phases 7–8 require the backend API to be ready. Phase 9 ties everything together.
+**Total: 53 tasks across 9 phases (2 shared → 3 backend + 3 frontend in parallel → 1 convergence)**
