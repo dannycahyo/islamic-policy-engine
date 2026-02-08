@@ -1,0 +1,124 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-rule-parameters
+      author: islamic-policy-engine
+      changes:
+        - createTable:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rule_parameters_rule
+                    references: rules(id)
+                    deleteCascade: true
+              - column:
+                  name: param_key
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: param_value
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: param_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: rule_parameters
+            columnNames: rule_id, param_key
+            constraintName: uk_rule_parameters_rule_id_param_key
+
+  - changeSet:
+      id: 002-create-policy-audit-log
+      author: islamic-policy-engine
+      changes:
+        - createTable:
+            tableName: policy_audit_log
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: policy_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_audit_log_rule
+                    references: rules(id)
+              - column:
+                  name: rule_version
+                  type: int
+              - column:
+                  name: input_data
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: output_data
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: evaluation_ms
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: caller_id
+                  type: varchar(100)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_audit_log_policy_type
+            tableName: policy_audit_log
+            columns:
+              - column:
+                  name: policy_type
+        - createIndex:
+            indexName: idx_audit_log_created_at
+            tableName: policy_audit_log
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+        - createIndex:
+            indexName: idx_audit_log_rule_id
+            tableName: policy_audit_log
+            columns:
+              - column:
+                  name: rule_id
