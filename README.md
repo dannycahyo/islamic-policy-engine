@@ -70,7 +70,8 @@ islamic-policy-engine/
 │   └── vite.config.ts
 ├── docs/
 │   ├── PRD.md                      # Product Requirements Document
-│   └── TRD.md                      # Technical Requirements Document
+│   ├── TRD.md                      # Technical Requirements Document
+│   └── IMPLEMENTATION.md           # Phase-by-phase delivery plan
 ├── docker-compose.yml
 └── README.md                       # ← You are here
 ```
@@ -173,107 +174,11 @@ npm test
 
 ---
 
-## Implementation Tracking
-
-The table below tracks the status of each implementation phase. Update the status as work progresses.
-
-### Phase 1: Project Setup and Infrastructure
-
-| #   | Task                                        | Status      | Notes |
-| --- | ------------------------------------------- | ----------- | ----- |
-| 1.1 | Initialize Spring Boot project (Maven)      | Not Started |       |
-| 1.2 | Add Drools 8.44.x dependencies to pom.xml   | Not Started |       |
-| 1.3 | Configure PostgreSQL + Liquibase            | Not Started |       |
-| 1.4 | Create Liquibase changelogs (001, 002, 003) | Not Started |       |
-| 1.5 | Configure Spring Cache (Caffeine)           | Not Started |       |
-| 1.6 | Configure CORS                              | Not Started |       |
-| 1.7 | Set up SpringDoc OpenAPI                    | Not Started |       |
-| 1.8 | Create Dockerfile (backend)                 | Not Started |       |
-| 1.9 | Create docker-compose.yml                   | Not Started |       |
-
-### Phase 2: Domain Model and Database Layer
-
-| #   | Task                                        | Status      | Notes |
-| --- | ------------------------------------------- | ----------- | ----- |
-| 2.1 | Create `Rule` JPA entity                    | Not Started |       |
-| 2.2 | Create `RuleParameter` JPA entity           | Not Started |       |
-| 2.3 | Create `AuditLog` JPA entity                | Not Started |       |
-| 2.4 | Create enums (PolicyType, AccountTier, etc) | Not Started |       |
-| 2.5 | Create Drools fact classes (3 types)        | Not Started |       |
-| 2.6 | Create DTOs (request/response)              | Not Started |       |
-| 2.7 | Create JPA repositories                     | Not Started |       |
-
-### Phase 3: Drools Engine Integration
-
-| #   | Task                                              | Status      | Notes |
-| --- | ------------------------------------------------- | ----------- | ----- |
-| 3.1 | Implement `DroolsEngineService` (compile + cache) | Not Started |       |
-| 3.2 | Write Transaction Limit DRL                       | Not Started |       |
-| 3.3 | Write Financing Eligibility DRL                   | Not Started |       |
-| 3.4 | Write Risk Flag DRL                               | Not Started |       |
-| 3.5 | Implement DRL validation service                  | Not Started |       |
-| 3.6 | Seed default rules (003 changeset)                | Not Started |       |
-| 3.7 | Unit test: Transaction Limit rule                 | Not Started |       |
-| 3.8 | Unit test: Financing Eligibility rule             | Not Started |       |
-| 3.9 | Unit test: Risk Flag rule                         | Not Started |       |
-
-### Phase 4: REST API Layer
-
-| #   | Task                                   | Status      | Notes |
-| --- | -------------------------------------- | ----------- | ----- |
-| 4.1 | Implement `PolicyEvaluationService`    | Not Started |       |
-| 4.2 | Implement `PolicyEvaluationController` | Not Started |       |
-| 4.3 | Implement `RuleManagementService`      | Not Started |       |
-| 4.4 | Implement `RuleManagementController`   | Not Started |       |
-| 4.5 | Implement `AuditService`               | Not Started |       |
-| 4.6 | Implement `AuditController`            | Not Started |       |
-| 4.7 | Implement `GlobalExceptionHandler`     | Not Started |       |
-| 4.8 | Integration test: full evaluation flow | Not Started |       |
-| 4.9 | Integration test: rule management flow | Not Started |       |
-
-### Phase 5: Admin Dashboard (React Router V7)
-
-| #    | Task                                              | Status      | Notes |
-| ---- | ------------------------------------------------- | ----------- | ----- |
-| 5.1  | Scaffold React Router V7 project (framework mode) | Not Started |       |
-| 5.2  | Create dashboard layout (sidebar + header)        | Not Started |       |
-| 5.3  | Build Dashboard overview page                     | Not Started |       |
-| 5.4  | Build Rule listing page with filters              | Not Started |       |
-| 5.5  | Build Rule detail page (parameter form)           | Not Started |       |
-| 5.6  | Build DRL editor page (Monaco integration)        | Not Started |       |
-| 5.7  | Build Rule test page (dry-run)                    | Not Started |       |
-| 5.8  | Build Create new rule page                        | Not Started |       |
-| 5.9  | Build Audit log viewer page                       | Not Started |       |
-| 5.10 | Create API client (`lib/api.ts`)                  | Not Started |       |
-| 5.11 | Create Dockerfile (frontend)                      | Not Started |       |
-
-### Phase 6: Integration and Polish
-
-| #   | Task                                       | Status      | Notes |
-| --- | ------------------------------------------ | ----------- | ----- |
-| 6.1 | End-to-end test: Docker Compose full stack | Not Started |       |
-| 6.2 | Verify cache invalidation on rule update   | Not Started |       |
-| 6.3 | Verify audit log records all evaluations   | Not Started |       |
-| 6.4 | Test DRL hot-reload without restart        | Not Started |       |
-| 6.5 | Swagger UI verification                    | Not Started |       |
-| 6.6 | Update README with final instructions      | Not Started |       |
-
-### Status Legend
-
-| Status      | Meaning                             |
-| ----------- | ----------------------------------- |
-| Not Started | Work has not begun                  |
-| In Progress | Currently being worked on           |
-| Done        | Completed and verified              |
-| Blocked     | Cannot proceed — see Notes          |
-| Skipped     | Intentionally skipped (with reason) |
-
----
-
 ## Documentation
 
 - [Product Requirements Document (PRD)](./docs/PRD.md) — what we're building and why
 - [Technical Requirements Document (TRD)](./docs/TRD.md) — how we're building it (architecture, schemas, API design, code samples)
+- [Implementation Plan](./docs/IMPLEMENTATION.md) — 9-phase delivery plan with task tracking (53 tasks)
 
 ## License
 
