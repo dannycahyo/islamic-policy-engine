@@ -66,12 +66,12 @@ Bootstrap the Spring Boot project with all dependencies and infrastructure confi
 
 | #   | Task                                                    | Status      | Notes |
 | --- | ------------------------------------------------------- | ----------- | ----- |
-| 1.1 | Initialize Spring Boot 2.6.x project via Maven archetype | Not Started |       |
-| 1.2 | Add dependencies: Drools 8.44.x, Caffeine, Liquibase, SpringDoc, Lombok | Not Started |       |
-| 1.3 | Create `application.yml` and `application-docker.yml`   | Not Started |       |
-| 1.4 | Configure Spring Cache with Caffeine (`CacheConfig`)    | Not Started |       |
-| 1.5 | Configure CORS (`CorsConfig`)                           | Not Started |       |
-| 1.6 | Create `Dockerfile` (backend) and `docker-compose.yml`  | Not Started |       |
+| 1.1 | Initialize Spring Boot 2.6.x project via Maven archetype | Done |       |
+| 1.2 | Add dependencies: Drools 8.44.x, Caffeine, Liquibase, SpringDoc, Lombok | Done |       |
+| 1.3 | Create `application.yml` and `application-docker.yml`   | Done |       |
+| 1.4 | Configure Spring Cache with Caffeine (`CacheConfig`)    | Done |       |
+| 1.5 | Configure CORS (`CorsConfig`)                           | Done |       |
+| 1.6 | Create `Dockerfile` (backend) and `docker-compose.yml`  | Done |       |
 
 **Exit criteria:** `docker compose up` starts PostgreSQL and the Spring Boot app with no errors. Swagger UI loads at `/swagger-ui.html` (empty).
 
@@ -83,13 +83,13 @@ Define the database schema via Liquibase and create all JPA entities, enums, fac
 
 | #   | Task                                                     | Status      | Notes |
 | --- | -------------------------------------------------------- | ----------- | ----- |
-| 2.1 | Create Liquibase master changelog and 001 (rules table)  | Not Started |       |
-| 2.2 | Create Liquibase 002 (rule_parameters + audit_log tables) | Not Started |       |
-| 2.3 | Create JPA entities: `Rule`, `RuleParameter`, `AuditLog` | Not Started |       |
-| 2.4 | Create enums: `PolicyType`, `AccountTier`, `AccountStatus` | Not Started |       |
-| 2.5 | Create Drools fact classes: `TransactionFact`, `FinancingRequestFact`, `RiskAssessmentFact` | Not Started |       |
-| 2.6 | Create DTOs: `EvaluationRequest`, `EvaluationResponse`, `RuleDto`, `AuditLogDto` | Not Started |       |
-| 2.7 | Create JPA repositories: `RuleRepository`, `AuditLogRepository` | Not Started |       |
+| 2.1 | Create Liquibase master changelog and 001 (rules table)  | Done |       |
+| 2.2 | Create Liquibase 002 (rule_parameters + audit_log tables) | Done |       |
+| 2.3 | Create JPA entities: `Rule`, `RuleParameter`, `AuditLog` | Done |       |
+| 2.4 | Create enums: `PolicyType`, `AccountTier`, `AccountStatus` | Done |       |
+| 2.5 | Create Drools fact classes: `TransactionFact`, `FinancingRequestFact`, `RiskAssessmentFact` | Done |       |
+| 2.6 | Create DTOs: `EvaluationRequest`, `EvaluationResponse`, `RuleDto`, `AuditLogDto` | Done |       |
+| 2.7 | Create JPA repositories: `RuleRepository`, `AuditLogRepository` | Done |       |
 
 **Exit criteria:** App starts, Liquibase runs migrations successfully, tables exist in PostgreSQL. All model classes compile.
 
