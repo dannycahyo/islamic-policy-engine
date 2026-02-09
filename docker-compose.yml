@@ -29,5 +29,17 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    build:
+      context: ./policy-engine-dashboard
+      dockerfile: Dockerfile
+    container_name: islamic-policy-dashboard
+    ports:
+      - "5173:3000"
+    environment:
+      API_URL: http://backend:8080
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:

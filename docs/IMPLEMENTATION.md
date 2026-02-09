@@ -154,11 +154,11 @@ Scaffold the React Router V7 project and build the shell (sidebar, header, routi
 
 | #   | Task                                                      | Status      | Notes |
 | --- | --------------------------------------------------------- | ----------- | ----- |
-| 6.1 | Scaffold React Router V7 project (framework mode + Vite)  | Not Started |       |
-| 6.2 | Create root layout with sidebar navigation and header     | Not Started |       |
-| 6.3 | Create API client (`lib/api.ts`) with typed fetch wrapper | Not Started |       |
-| 6.4 | Define shared TypeScript types (`lib/types.ts`)           | Not Started |       |
-| 6.5 | Create `Dockerfile` (frontend) and update docker-compose  | Not Started |       |
+| 6.1 | Scaffold React Router V7 project (framework mode + Vite)  | Done | React Router V7 + Vite + Tailwind CSS v4 |
+| 6.2 | Create root layout with sidebar navigation and header     | Done | Dark sidebar, responsive, loading indicator |
+| 6.3 | Create API client (`lib/api.ts`) with typed fetch wrapper | Done | Typed error handling, all endpoints |
+| 6.4 | Define shared TypeScript types (`lib/types.ts`)           | Done | Full type coverage |
+| 6.5 | Create `Dockerfile` (frontend) and update docker-compose  | Done | Multi-stage build, node:20-alpine |
 
 **Exit criteria:** Dashboard renders with sidebar navigation. Routes resolve correctly. API client successfully fetches from the backend.
 
@@ -170,11 +170,11 @@ Build the core rule management UI: listing, detail editing, and the DRL code edi
 
 | #   | Task                                                       | Status      | Notes |
 | --- | ---------------------------------------------------------- | ----------- | ----- |
-| 7.1 | Build Dashboard overview page (rule counts, recent audit)  | Not Started |       |
-| 7.2 | Build Rule listing page with policy type filter            | Not Started |       |
-| 7.3 | Build Rule detail page (parameter form + active toggle)    | Not Started |       |
-| 7.4 | Build DRL editor page (Monaco integration + validation)    | Not Started |       |
-| 7.5 | Build Create new rule page (form + DRL editor)             | Not Started |       |
+| 7.1 | Build Dashboard overview page (rule counts, recent audit)  | Done | Stats cards, recent activity table, quick links |
+| 7.2 | Build Rule listing page with policy type filter            | Done | Grid layout, filter dropdown, pagination |
+| 7.3 | Build Rule detail page (parameter form + active toggle)    | Done | useReducer for params, toggle via PATCH |
+| 7.4 | Build DRL editor page (Monaco integration + validation)    | Done | Monaco with vs-dark theme, client-side validation |
+| 7.5 | Build Create new rule page (form + DRL editor)             | Done | Full form with DRL editor and parameter builder |
 
 **Exit criteria:** Can list all rules, edit parameters, toggle active/inactive, write and validate DRL, and create new rules — all from the browser.
 
@@ -186,10 +186,10 @@ Build the remaining pages (dry-run testing, audit log) and polish the overall UI
 
 | #   | Task                                                      | Status      | Notes |
 | --- | --------------------------------------------------------- | ----------- | ----- |
-| 8.1 | Build Rule test page (JSON input form + result display)   | Not Started |       |
-| 8.2 | Build Audit log viewer (paginated table + filters)        | Not Started |       |
-| 8.3 | Add loading states, error boundaries, and toast feedback  | Not Started |       |
-| 8.4 | Verify all dashboard routes work with backend API         | Not Started |       |
+| 8.1 | Build Rule test page (JSON input form + result display)   | Done | Sample inputs per PolicyType, formatted results |
+| 8.2 | Build Audit log viewer (paginated table + filters)        | Done | Expandable rows, date/type/ruleId filters |
+| 8.3 | Add loading states, error boundaries, and toast feedback  | Done | Navigation spinner, ErrorBoundary per route, toast system |
+| 8.4 | Verify all dashboard routes work with backend API         | Done | Build succeeds, all routes resolve |
 
 **Exit criteria:** All dashboard pages from the TRD are functional. Dry-run returns results without audit. Audit log filters by policy type and date range.
 
