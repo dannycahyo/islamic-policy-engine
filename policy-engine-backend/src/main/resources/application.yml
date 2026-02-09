@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/islamic_policy
+    url: jdbc:postgresql://localhost:5432/islamic_policy?stringtype=unspecified
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver

@@ -16,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ public class RuleManagementService {
     private final RuleRepository ruleRepository;
     private final DrlValidationService drlValidationService;
     private final DroolsEngineService droolsEngineService;
+    private final EntityManager entityManager;
 
     public Page<RuleDto> getRules(PolicyType policyType, Boolean isActive, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
@@ -111,6 +113,7 @@ public class RuleManagementService {
         // Update parameters
         if (ruleDto.getParameters() != null) {
             rule.getParameters().clear();
+            entityManager.flush();
             for (ParameterDto paramDto : ruleDto.getParameters()) {
                 RuleParameter param = RuleParameter.builder()
                         .rule(rule)
