@@ -121,12 +121,24 @@ curl -X POST http://localhost:8080/api/v1/policies/RISK_FLAG/evaluate \
 
 ### Manage Rules
 
+> **Seeded rule UUIDs** (created by Liquibase on startup):
+> | Rule | UUID |
+> |------|------|
+> | TRANSACTION_LIMIT | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+> | FINANCING_ELIGIBILITY | `b2c3d4e5-f6a7-8901-bcde-f12345678901` |
+> | RISK_FLAG | `c3d4e5f6-a7b8-9012-cdef-123456789012` |
+
 ```bash
 # List all rules
 curl http://localhost:8080/api/v1/rules
 
 # Get a specific rule (with DRL source)
 curl http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+# Dry-run test (no audit record created)
+curl -X POST http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890/test \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"accountTier": "GOLD", "transactionAmount": 40000000, "dailyCumulativeAmount": 0}}'
 
 # Update rule parameters (changes take effect immediately)
 curl -X PUT http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
@@ -138,14 +150,9 @@ curl -X PUT http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567
   }'
 
 # Toggle a rule off
-curl -X PATCH http://localhost:8080/api/v1/rules/{id}/status \
+curl -X PATCH http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890/status \
   -H "Content-Type: application/json" \
   -d '{"isActive": false}'
-
-# Dry-run test (no audit record created)
-curl -X POST http://localhost:8080/api/v1/rules/{id}/test \
-  -H "Content-Type: application/json" \
-  -d '{"data": {"accountTier": "GOLD", "transactionAmount": 40000000, "dailyCumulativeAmount": 0}}'
 
 # View audit log
 curl "http://localhost:8080/api/v1/audit?policyType=TRANSACTION_LIMIT&page=0&size=10"
