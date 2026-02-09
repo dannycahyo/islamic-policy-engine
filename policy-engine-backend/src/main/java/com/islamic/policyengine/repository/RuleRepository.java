@@ -2,6 +2,7 @@ package com.islamic.policyengine.repository;
 
 import com.islamic.policyengine.model.entity.Rule;
 import com.islamic.policyengine.model.enums.PolicyType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Repository
 public interface RuleRepository extends JpaRepository<Rule, UUID> {
 
+    @EntityGraph(attributePaths = "parameters")
     List<Rule> findByPolicyTypeAndIsActiveTrue(PolicyType policyType);
 
     List<Rule> findByPolicyType(PolicyType policyType);
@@ -28,4 +30,7 @@ public interface RuleRepository extends JpaRepository<Rule, UUID> {
     Page<Rule> findByPolicyTypeAndIsActive(PolicyType policyType, Boolean isActive, Pageable pageable);
 
     Optional<Rule> findByName(String name);
+
+    @EntityGraph(attributePaths = "parameters")
+    Optional<Rule> findWithParametersById(UUID id);
 }

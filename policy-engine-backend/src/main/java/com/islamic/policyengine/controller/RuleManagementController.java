@@ -3,10 +3,7 @@ package com.islamic.policyengine.controller;
 import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
 import com.islamic.policyengine.model.dto.RuleDto;
-import com.islamic.policyengine.model.entity.Rule;
 import com.islamic.policyengine.model.enums.PolicyType;
-import com.islamic.policyengine.exception.PolicyNotFoundException;
-import com.islamic.policyengine.repository.RuleRepository;
 import com.islamic.policyengine.service.PolicyEvaluationService;
 import com.islamic.policyengine.service.RuleManagementService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +22,6 @@ public class RuleManagementController {
 
     private final RuleManagementService ruleManagementService;
     private final PolicyEvaluationService policyEvaluationService;
-    private final RuleRepository ruleRepository;
 
     @GetMapping
     public ResponseEntity<Page<RuleDto>> getRules(
@@ -59,6 +55,9 @@ public class RuleManagementController {
     public ResponseEntity<RuleDto> toggleStatus(@PathVariable UUID id,
                                                  @RequestBody Map<String, Boolean> body) {
         Boolean isActive = body.get("isActive");
+        if (isActive == null) {
+            throw new IllegalArgumentException("'isActive' field is required");
+        }
         RuleDto updated = ruleManagementService.toggleStatus(id, isActive);
         return ResponseEntity.ok(updated);
     }
@@ -66,11 +65,7 @@ public class RuleManagementController {
     @PostMapping("/{id}/test")
     public ResponseEntity<EvaluationResponse> testRule(@PathVariable UUID id,
                                                         @RequestBody EvaluationRequest request) {
-        Rule rule = ruleRepository.findById(id)
-                .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + id));
-
-        EvaluationResponse response = policyEvaluationService.evaluateWithRule(
-                rule, rule.getPolicyType(), request, false);
+        EvaluationResponse response = policyEvaluationService.testRuleById(id, request);
         return ResponseEntity.ok(response);
     }
 }

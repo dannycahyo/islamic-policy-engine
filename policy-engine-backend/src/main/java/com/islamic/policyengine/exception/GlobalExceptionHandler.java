@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -17,6 +18,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
+        Map<String, Object> body = buildErrorResponse(
+                "EVALUATION_TIMEOUT", ex.getReason(), List.of());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
 
     @ExceptionHandler(PolicyNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handlePolicyNotFound(PolicyNotFoundException ex) {
