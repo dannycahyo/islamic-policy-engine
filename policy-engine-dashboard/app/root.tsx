@@ -59,7 +59,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <div className="max-w-md rounded-lg bg-white p-8 shadow-lg">
         <h1 className="mb-2 text-4xl font-bold text-gray-900">{message}</h1>
         <p className="mb-4 text-gray-600">{details}</p>
-        {stack && (
+        {stack && import.meta.env.DEV && (
           <pre className="overflow-auto rounded bg-gray-50 p-4 text-xs text-gray-700">
             {stack}
           </pre>

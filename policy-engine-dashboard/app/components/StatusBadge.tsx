@@ -19,16 +19,16 @@ export function StatusBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
-export function PolicyTypeBadge({ policyType }: { policyType: PolicyType }) {
-  const colors: Record<PolicyType, string> = {
-    [PolicyType.TRANSACTION_LIMIT]: "bg-blue-100 text-blue-800",
-    [PolicyType.FINANCING_ELIGIBILITY]: "bg-purple-100 text-purple-800",
-    [PolicyType.RISK_FLAG]: "bg-amber-100 text-amber-800",
-  };
+const POLICY_TYPE_COLORS: Record<PolicyType, string> = {
+  [PolicyType.TRANSACTION_LIMIT]: "bg-blue-100 text-blue-800",
+  [PolicyType.FINANCING_ELIGIBILITY]: "bg-purple-100 text-purple-800",
+  [PolicyType.RISK_FLAG]: "bg-amber-100 text-amber-800",
+};
 
+export function PolicyTypeBadge({ policyType }: { policyType: PolicyType }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[policyType]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${POLICY_TYPE_COLORS[policyType]}`}
     >
       {POLICY_TYPE_LABELS[policyType]}
     </span>

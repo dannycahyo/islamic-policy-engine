@@ -46,14 +46,17 @@ export async function loader({ params }: Route.LoaderArgs): Promise<DrlPageData>
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const drlSource = formData.get("drlSource") as string;
+  const name = formData.get("ruleName") as string;
+  const description = formData.get("ruleDescription") as string;
+  const parametersJson = formData.get("ruleParameters") as string;
 
   try {
-    const rule = await getRule(params.ruleId);
+    const parameters = JSON.parse(parametersJson || "[]");
     await updateRule(params.ruleId, {
-      name: rule.name,
-      description: rule.description,
+      name,
+      description,
       drlSource,
-      parameters: rule.parameters,
+      parameters,
     });
     return { success: true, message: "DRL source saved successfully" };
   } catch (err) {
@@ -104,7 +107,7 @@ export default function DrlEditorPage() {
         payload: { message: actionData.message, type: "error" },
       });
     }
-  }, [actionData]);
+  }, [actionData, dispatch]);
 
   function handleValidate() {
     // Basic client-side validation
@@ -149,6 +152,9 @@ export default function DrlEditorPage() {
 
       <Form method="post">
         <input type="hidden" name="drlSource" value={state.drlSource} />
+        <input type="hidden" name="ruleName" value={rule.name} />
+        <input type="hidden" name="ruleDescription" value={rule.description} />
+        <input type="hidden" name="ruleParameters" value={JSON.stringify(rule.parameters)} />
 
         <DrlEditor
           value={state.drlSource}

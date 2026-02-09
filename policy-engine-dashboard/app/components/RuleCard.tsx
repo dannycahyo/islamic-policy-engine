@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import type { Rule } from "~/lib/types";
-import { POLICY_TYPE_LABELS } from "~/lib/types";
 import { StatusBadge, PolicyTypeBadge } from "./StatusBadge";
 
 export function RuleCard({ rule }: { rule: Rule }) {

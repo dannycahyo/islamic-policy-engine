@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigation } from "react-router";
-import { useReducer } from "react";
+import { useEffect, useReducer } from "react";
 
 interface ToastState {
   message: string;
@@ -186,10 +186,10 @@ function Toast({
   type: "success" | "error";
   onClose: () => void;
 }) {
-  // Auto-dismiss after 4 seconds
-  if (typeof window !== "undefined") {
-    setTimeout(onClose, 4000);
-  }
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
   return (
     <div

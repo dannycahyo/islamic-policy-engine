@@ -1,8 +1,8 @@
 import { Link, useLoaderData, isRouteErrorResponse } from "react-router";
 import type { Route } from "./+types/_layout.dashboard";
 import { getRules, getAuditLogs } from "~/lib/api";
-import { PolicyType, POLICY_TYPE_LABELS } from "~/lib/types";
-import type { Rule, AuditLog } from "~/lib/types";
+import { PolicyType } from "~/lib/types";
+import type { AuditLog } from "~/lib/types";
 import { PolicyTypeBadge } from "~/components/StatusBadge";
 
 interface DashboardData {

@@ -108,7 +108,7 @@ export default function NewRulePage() {
         payload: { message: actionData.message, type: "error" },
       });
     }
-  }, [actionData]);
+  }, [actionData, dispatch]);
 
   return (
     <div>
@@ -134,10 +134,11 @@ export default function NewRulePage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="new-rule-name" className="mb-1 block text-sm font-medium text-gray-700">
                 Name
               </label>
               <input
+                id="new-rule-name"
                 type="text"
                 name="name"
                 required
@@ -146,10 +147,11 @@ export default function NewRulePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="new-rule-policy-type" className="mb-1 block text-sm font-medium text-gray-700">
                 Policy Type
               </label>
               <select
+                id="new-rule-policy-type"
                 name="policyType"
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -162,10 +164,11 @@ export default function NewRulePage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="new-rule-description" className="mb-1 block text-sm font-medium text-gray-700">
                 Description
               </label>
               <textarea
+                id="new-rule-description"
                 name="description"
                 rows={2}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"

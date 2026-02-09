@@ -1,6 +1,5 @@
 import { useReducer } from "react";
 import type { AuditLog } from "~/lib/types";
-import { POLICY_TYPE_LABELS } from "~/lib/types";
 import { PolicyTypeBadge } from "./StatusBadge";
 
 interface AuditTableState {
@@ -31,7 +30,7 @@ function auditTableReducer(
 
 export function AuditTable({ logs }: { logs: AuditLog[] }) {
   const [state, dispatch] = useReducer(auditTableReducer, {
-    expandedRows: new Set(),
+    expandedRows: new Set<number>(),
   });
 
   if (logs.length === 0) {

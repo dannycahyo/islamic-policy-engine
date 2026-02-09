@@ -3,7 +3,6 @@ import {
   useLoaderData,
   useActionData,
   Form,
-  redirect,
   isRouteErrorResponse,
   useNavigation,
   useOutletContext,
@@ -12,7 +11,6 @@ import { useEffect } from "react";
 import type { Route } from "./+types/_layout.rules.$ruleId";
 import { getRule, updateRule, toggleRuleStatus } from "~/lib/api";
 import type { Rule } from "~/lib/types";
-import { POLICY_TYPE_LABELS } from "~/lib/types";
 import { StatusBadge, PolicyTypeBadge } from "~/components/StatusBadge";
 import { ParameterForm } from "~/components/ParameterForm";
 import type { LayoutContext } from "./_layout";
@@ -53,11 +51,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       i++;
     }
 
-    const rule = await getRule(params.ruleId);
+    const drlSource = formData.get("drlSource") as string;
     await updateRule(params.ruleId, {
       name,
       description,
-      drlSource: rule.drlSource,
+      drlSource,
       parameters,
     });
 
@@ -102,7 +100,7 @@ export default function RuleDetailPage() {
         payload: { message: actionData.message, type: "error" },
       });
     }
-  }, [actionData]);
+  }, [actionData, dispatch]);
 
   return (
     <div>
@@ -165,13 +163,15 @@ export default function RuleDetailPage() {
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <Form method="post">
           <input type="hidden" name="intent" value="update-parameters" />
+          <input type="hidden" name="drlSource" value={rule.drlSource} />
 
           <div className="mb-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="rule-name" className="mb-1 block text-sm font-medium text-gray-700">
                 Name
               </label>
               <input
+                id="rule-name"
                 type="text"
                 name="name"
                 defaultValue={rule.name}
@@ -179,10 +179,11 @@ export default function RuleDetailPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="rule-description" className="mb-1 block text-sm font-medium text-gray-700">
                 Description
               </label>
               <input
+                id="rule-description"
                 type="text"
                 name="description"
                 defaultValue={rule.description}
