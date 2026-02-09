@@ -101,12 +101,12 @@ Build the core Drools integration: DRL compilation, caching, validation, and the
 
 | #   | Task                                                       | Status      | Notes |
 | --- | ---------------------------------------------------------- | ----------- | ----- |
-| 3.1 | Implement `DroolsEngineService` (compile DRL → cached KieBase) | Not Started |       |
-| 3.2 | Implement `DroolsConfig` (KieServices bean setup)          | Not Started |       |
-| 3.3 | Write Transaction Limit DRL (with global params)           | Not Started |       |
-| 3.4 | Write Financing Eligibility DRL (Murabahah)                | Not Started |       |
-| 3.5 | Write Risk Flag DRL (multi-pattern)                        | Not Started |       |
-| 3.6 | Implement DRL validation service (compile check)           | Not Started |       |
+| 3.1 | Implement `DroolsEngineService` (compile DRL → cached KieBase) | Done |       |
+| 3.2 | Implement `DroolsConfig` (KieServices bean setup)          | Done |       |
+| 3.3 | Write Transaction Limit DRL (with global params)           | Done |       |
+| 3.4 | Write Financing Eligibility DRL (Murabahah)                | Done |       |
+| 3.5 | Write Risk Flag DRL (multi-pattern)                        | Done |       |
+| 3.6 | Implement DRL validation service (compile check)           | Done |       |
 
 **Exit criteria:** Each DRL compiles without errors via `KieHelper`. `DroolsEngineService` can build and cache a `KieBase` from DRL source.
 
@@ -118,13 +118,13 @@ Wire up the evaluation endpoint and prove all three rules work correctly with un
 
 | #   | Task                                                    | Status      | Notes |
 | --- | ------------------------------------------------------- | ----------- | ----- |
-| 4.1 | Implement `PolicyEvaluationService` (full evaluation flow) | Not Started |       |
-| 4.2 | Implement `PolicyEvaluationController` (`POST /evaluate`) | Not Started |       |
-| 4.3 | Implement `AuditService` (write audit record)            | Not Started |       |
-| 4.4 | Create Liquibase 003 (seed default rules + parameters)   | Not Started |       |
-| 4.5 | Unit test: Transaction Limit rule (all tiers, edge cases) | Not Started |       |
-| 4.6 | Unit test: Financing Eligibility rule (pass/fail combos)  | Not Started |       |
-| 4.7 | Unit test: Risk Flag rule (single flag, multi-flag, clean) | Not Started |       |
+| 4.1 | Implement `PolicyEvaluationService` (full evaluation flow) | Done |       |
+| 4.2 | Implement `PolicyEvaluationController` (`POST /evaluate`) | Done |       |
+| 4.3 | Implement `AuditService` (write audit record)            | Done |       |
+| 4.4 | Create Liquibase 003 (seed default rules + parameters)   | Done |       |
+| 4.5 | Unit test: Transaction Limit rule (all tiers, edge cases) | Done |       |
+| 4.6 | Unit test: Financing Eligibility rule (pass/fail combos)  | Done |       |
+| 4.7 | Unit test: Risk Flag rule (single flag, multi-flag, clean) | Done |       |
 
 **Exit criteria:** `POST /api/v1/policies/{type}/evaluate` returns correct results for all three policy types. All unit tests pass. Audit records appear in the database.
 
@@ -136,13 +136,13 @@ Add the CRUD endpoints for rule management and the audit log query endpoint. By 
 
 | #   | Task                                                      | Status      | Notes |
 | --- | --------------------------------------------------------- | ----------- | ----- |
-| 5.1 | Implement `RuleManagementService` (CRUD + cache eviction) | Not Started |       |
-| 5.2 | Implement `RuleManagementController` (GET/PUT/POST/PATCH) | Not Started |       |
-| 5.3 | Implement dry-run test endpoint (`POST /rules/{id}/test`) | Not Started |       |
-| 5.4 | Implement `AuditController` (paginated + filtered query)  | Not Started |       |
-| 5.5 | Implement `GlobalExceptionHandler` (consistent errors)    | Not Started |       |
-| 5.6 | Integration test: evaluation flow (Testcontainers)        | Not Started |       |
-| 5.7 | Integration test: rule CRUD + cache invalidation          | Not Started |       |
+| 5.1 | Implement `RuleManagementService` (CRUD + cache eviction) | Done |       |
+| 5.2 | Implement `RuleManagementController` (GET/PUT/POST/PATCH) | Done |       |
+| 5.3 | Implement dry-run test endpoint (`POST /rules/{id}/test`) | Done |       |
+| 5.4 | Implement `AuditController` (paginated + filtered query)  | Done |       |
+| 5.5 | Implement `GlobalExceptionHandler` (consistent errors)    | Done |       |
+| 5.6 | Integration test: evaluation flow (Testcontainers)        | Done |       |
+| 5.7 | Integration test: rule CRUD + cache invalidation          | Done |       |
 
 **Exit criteria:** All REST endpoints from the TRD work correctly. Swagger UI shows all endpoints. Integration tests pass with Testcontainers.
 

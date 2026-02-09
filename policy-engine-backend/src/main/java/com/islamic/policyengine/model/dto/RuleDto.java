@@ -18,7 +18,9 @@ public class RuleDto {
 
     private UUID id;
     private String name;
+    private String description;
     private PolicyType policyType;
+    private String drlSource;
     private Boolean isActive;
     private Integer version;
     private List<ParameterDto> parameters;

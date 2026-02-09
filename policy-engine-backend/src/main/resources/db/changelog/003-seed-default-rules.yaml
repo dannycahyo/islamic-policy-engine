@@ -1,0 +1,375 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-seed-transaction-limit-rule
+      author: islamic-policy-engine
+      changes:
+        - insert:
+            tableName: rules
+            columns:
+              - column:
+                  name: id
+                  value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              - column:
+                  name: name
+                  value: "Transaction Limit - Standard"
+              - column:
+                  name: description
+                  value: "Daily transaction limits by account tier (SILVER, GOLD, PLATINUM)"
+              - column:
+                  name: policy_type
+                  value: "TRANSACTION_LIMIT"
+              - column:
+                  name: drl_source
+                  value: "package com.islamic.policyengine.rules;\n\nimport com.islamic.policyengine.model.fact.TransactionFact;\nimport com.islamic.policyengine.model.enums.AccountTier;\nimport java.math.BigDecimal;\n\nglobal java.math.BigDecimal silverDailyLimit;\nglobal java.math.BigDecimal goldDailyLimit;\nglobal java.math.BigDecimal platinumDailyLimit;\n\nrule \"Transaction Limit - SILVER - Exceeded\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.SILVER,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(silverDailyLimit) > 0\n        )\n    then\n        $tx.setAllowed(false);\n        $tx.setReason(\"Daily limit exceeded for SILVER tier\");\n        $tx.setRemainingLimit(silverDailyLimit.subtract($tx.getDailyCumulativeAmount()).max(java.math.BigDecimal.ZERO));\nend\n\nrule \"Transaction Limit - SILVER - Allowed\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.SILVER,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(silverDailyLimit) <= 0\n        )\n    then\n        $tx.setAllowed(true);\n        $tx.setReason(\"Transaction within daily limit for SILVER tier\");\n        $tx.setRemainingLimit(silverDailyLimit.subtract($tx.getDailyCumulativeAmount()).subtract($tx.getTransactionAmount()));\nend\n\nrule \"Transaction Limit - GOLD - Exceeded\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.GOLD,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(goldDailyLimit) > 0\n        )\n    then\n        $tx.setAllowed(false);\n        $tx.setReason(\"Daily limit exceeded for GOLD tier\");\n        $tx.setRemainingLimit(goldDailyLimit.subtract($tx.getDailyCumulativeAmount()).max(java.math.BigDecimal.ZERO));\nend\n\nrule \"Transaction Limit - GOLD - Allowed\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.GOLD,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(goldDailyLimit) <= 0\n        )\n    then\n        $tx.setAllowed(true);\n        $tx.setReason(\"Transaction within daily limit for GOLD tier\");\n        $tx.setRemainingLimit(goldDailyLimit.subtract($tx.getDailyCumulativeAmount()).subtract($tx.getTransactionAmount()));\nend\n\nrule \"Transaction Limit - PLATINUM - Exceeded\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.PLATINUM,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(platinumDailyLimit) > 0\n        )\n    then\n        $tx.setAllowed(false);\n        $tx.setReason(\"Daily limit exceeded for PLATINUM tier\");\n        $tx.setRemainingLimit(platinumDailyLimit.subtract($tx.getDailyCumulativeAmount()).max(java.math.BigDecimal.ZERO));\nend\n\nrule \"Transaction Limit - PLATINUM - Allowed\"\n    when\n        $tx : TransactionFact(\n            accountTier == AccountTier.PLATINUM,\n            transactionAmount != null,\n            dailyCumulativeAmount != null,\n            transactionAmount.add(dailyCumulativeAmount).compareTo(platinumDailyLimit) <= 0\n        )\n    then\n        $tx.setAllowed(true);\n        $tx.setReason(\"Transaction within daily limit for PLATINUM tier\");\n        $tx.setRemainingLimit(platinumDailyLimit.subtract($tx.getDailyCumulativeAmount()).subtract($tx.getTransactionAmount()));\nend"
+              - column:
+                  name: is_active
+                  valueBoolean: true
+              - column:
+                  name: version
+                  valueNumeric: 1
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p1000001-0000-0000-0000-000000000001"
+              - column:
+                  name: rule_id
+                  value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              - column:
+                  name: param_key
+                  value: "silverDailyLimit"
+              - column:
+                  name: param_value
+                  value: "10000000"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Daily transaction limit for SILVER tier (IDR)"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p1000001-0000-0000-0000-000000000002"
+              - column:
+                  name: rule_id
+                  value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              - column:
+                  name: param_key
+                  value: "goldDailyLimit"
+              - column:
+                  name: param_value
+                  value: "50000000"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Daily transaction limit for GOLD tier (IDR)"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p1000001-0000-0000-0000-000000000003"
+              - column:
+                  name: rule_id
+                  value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              - column:
+                  name: param_key
+                  value: "platinumDailyLimit"
+              - column:
+                  name: param_value
+                  value: "200000000"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Daily transaction limit for PLATINUM tier (IDR)"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+
+  - changeSet:
+      id: 003-seed-financing-eligibility-rule
+      author: islamic-policy-engine
+      changes:
+        - insert:
+            tableName: rules
+            columns:
+              - column:
+                  name: id
+                  value: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+              - column:
+                  name: name
+                  value: "Financing Eligibility - Murabahah"
+              - column:
+                  name: description
+                  value: "Murabahah financing eligibility based on age, income, status, and DTI"
+              - column:
+                  name: policy_type
+                  value: "FINANCING_ELIGIBILITY"
+              - column:
+                  name: drl_source
+                  value: "package com.islamic.policyengine.rules;\n\nimport com.islamic.policyengine.model.fact.FinancingRequestFact;\nimport com.islamic.policyengine.model.enums.AccountStatus;\nimport java.math.BigDecimal;\nimport java.util.ArrayList;\n\nglobal Integer minAge;\nglobal Integer maxAge;\nglobal java.math.BigDecimal minMonthlyIncome;\nglobal java.math.BigDecimal maxDtiMultiplier;\n\nrule \"Financing - Calculate Max Amount\"\n    salience 100\n    when\n        $req : FinancingRequestFact(monthlyIncome != null)\n    then\n        $req.setMaxFinancingAmount($req.getMonthlyIncome().multiply(maxDtiMultiplier));\n        $req.setEligible(true);\n        $req.setReasons(new ArrayList<>());\nend\n\nrule \"Financing - Age Below Minimum\"\n    salience 50\n    when\n        $req : FinancingRequestFact(age != null, age < minAge)\n    then\n        $req.setEligible(false);\n        $req.getReasons().add(\"Age \" + $req.getAge() + \" is below minimum age of \" + minAge);\nend\n\nrule \"Financing - Age Above Maximum\"\n    salience 50\n    when\n        $req : FinancingRequestFact(age != null, age > maxAge)\n    then\n        $req.setEligible(false);\n        $req.getReasons().add(\"Age \" + $req.getAge() + \" exceeds maximum age of \" + maxAge);\nend\n\nrule \"Financing - Income Below Minimum\"\n    salience 50\n    when\n        $req : FinancingRequestFact(\n            monthlyIncome != null,\n            monthlyIncome.compareTo(minMonthlyIncome) < 0\n        )\n    then\n        $req.setEligible(false);\n        $req.getReasons().add(\"Monthly income below minimum of \" + minMonthlyIncome);\nend\n\nrule \"Financing - Account Not Active\"\n    salience 50\n    when\n        $req : FinancingRequestFact(accountStatus != null, accountStatus != AccountStatus.ACTIVE)\n    then\n        $req.setEligible(false);\n        $req.getReasons().add(\"Account status is \" + $req.getAccountStatus() + \", must be ACTIVE\");\nend\n\nrule \"Financing - Amount Exceeds DTI Cap\"\n    salience 40\n    when\n        $req : FinancingRequestFact(\n            requestedAmount != null,\n            monthlyIncome != null,\n            requestedAmount.compareTo(monthlyIncome.multiply(maxDtiMultiplier)) > 0\n        )\n    then\n        $req.setEligible(false);\n        $req.getReasons().add(\"Requested amount exceeds maximum financing of \" + $req.getMonthlyIncome().multiply(maxDtiMultiplier));\nend\n\nrule \"Financing - All Checks Passed\"\n    salience 10\n    when\n        $req : FinancingRequestFact(\n            eligible == true,\n            reasons != null,\n            reasons.size() == 0\n        )\n    then\n        $req.getReasons().add(\"All eligibility criteria met\");\nend"
+              - column:
+                  name: is_active
+                  valueBoolean: true
+              - column:
+                  name: version
+                  valueNumeric: 1
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p2000001-0000-0000-0000-000000000001"
+              - column:
+                  name: rule_id
+                  value: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+              - column:
+                  name: param_key
+                  value: "minAge"
+              - column:
+                  name: param_value
+                  value: "21"
+              - column:
+                  name: param_type
+                  value: "INTEGER"
+              - column:
+                  name: description
+                  value: "Minimum age for financing eligibility"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p2000001-0000-0000-0000-000000000002"
+              - column:
+                  name: rule_id
+                  value: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+              - column:
+                  name: param_key
+                  value: "maxAge"
+              - column:
+                  name: param_value
+                  value: "65"
+              - column:
+                  name: param_type
+                  value: "INTEGER"
+              - column:
+                  name: description
+                  value: "Maximum age for financing eligibility"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p2000001-0000-0000-0000-000000000003"
+              - column:
+                  name: rule_id
+                  value: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+              - column:
+                  name: param_key
+                  value: "minMonthlyIncome"
+              - column:
+                  name: param_value
+                  value: "5000000"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Minimum monthly income for financing (IDR)"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p2000001-0000-0000-0000-000000000004"
+              - column:
+                  name: rule_id
+                  value: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+              - column:
+                  name: param_key
+                  value: "maxDtiMultiplier"
+              - column:
+                  name: param_value
+                  value: "10"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Maximum debt-to-income multiplier"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+
+  - changeSet:
+      id: 003-seed-risk-flag-rule
+      author: islamic-policy-engine
+      changes:
+        - insert:
+            tableName: rules
+            columns:
+              - column:
+                  name: id
+                  value: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+              - column:
+                  name: name
+                  value: "Risk Flag - Transaction Monitoring"
+              - column:
+                  name: description
+                  value: "Flags transactions matching risk patterns for further review"
+              - column:
+                  name: policy_type
+                  value: "RISK_FLAG"
+              - column:
+                  name: drl_source
+                  value: "package com.islamic.policyengine.rules;\n\nimport com.islamic.policyengine.model.fact.RiskAssessmentFact;\nimport java.math.BigDecimal;\nimport java.util.Arrays;\n\nglobal java.math.BigDecimal highValueThreshold;\nglobal String highRiskRegions;\nglobal Integer maxFrequency;\n\nrule \"Risk - High Value Transaction\"\n    salience 100\n    when\n        $ra : RiskAssessmentFact(\n            transactionAmount != null,\n            transactionAmount.compareTo(highValueThreshold) > 0\n        )\n    then\n        $ra.setRiskScore($ra.getRiskScore() + 25);\n        $ra.getFlags().add(\"High-value transaction: amount exceeds \" + highValueThreshold);\n        $ra.setFlagged(true);\nend\n\nrule \"Risk - High Risk Region\"\n    salience 90\n    when\n        $ra : RiskAssessmentFact(\n            destinationRegion != null\n        )\n        eval(Arrays.asList(highRiskRegions.split(\",\")).contains($ra.getDestinationRegion()))\n    then\n        $ra.setRiskScore($ra.getRiskScore() + 25);\n        $ra.getFlags().add(\"High-risk destination region: \" + $ra.getDestinationRegion());\n        $ra.setFlagged(true);\nend\n\nrule \"Risk - High Frequency New Beneficiary\"\n    salience 80\n    when\n        $ra : RiskAssessmentFact(\n            transactionFrequency != null,\n            transactionFrequency > maxFrequency,\n            isNewBeneficiary != null,\n            isNewBeneficiary == true\n        )\n    then\n        $ra.setRiskScore($ra.getRiskScore() + 25);\n        $ra.getFlags().add(\"High frequency (\" + $ra.getTransactionFrequency() + \" txns/hr) with new beneficiary\");\n        $ra.setFlagged(true);\nend"
+              - column:
+                  name: is_active
+                  valueBoolean: true
+              - column:
+                  name: version
+                  valueNumeric: 1
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p3000001-0000-0000-0000-000000000001"
+              - column:
+                  name: rule_id
+                  value: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+              - column:
+                  name: param_key
+                  value: "highValueThreshold"
+              - column:
+                  name: param_value
+                  value: "100000000"
+              - column:
+                  name: param_type
+                  value: "DECIMAL"
+              - column:
+                  name: description
+                  value: "Threshold for high-value transaction flag (IDR)"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p3000001-0000-0000-0000-000000000002"
+              - column:
+                  name: rule_id
+                  value: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+              - column:
+                  name: param_key
+                  value: "highRiskRegions"
+              - column:
+                  name: param_value
+                  value: "IRAN,NORTH_KOREA,SYRIA"
+              - column:
+                  name: param_type
+                  value: "STRING"
+              - column:
+                  name: description
+                  value: "Comma-separated list of high-risk region codes"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
+        - insert:
+            tableName: rule_parameters
+            columns:
+              - column:
+                  name: id
+                  value: "p3000001-0000-0000-0000-000000000003"
+              - column:
+                  name: rule_id
+                  value: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+              - column:
+                  name: param_key
+                  value: "maxFrequency"
+              - column:
+                  name: param_value
+                  value: "10"
+              - column:
+                  name: param_type
+                  value: "INTEGER"
+              - column:
+                  name: description
+                  value: "Maximum transaction frequency per hour before flagging"
+              - column:
+                  name: created_at
+                  valueDate: "2026-02-08T00:00:00"
+              - column:
+                  name: updated_at
+                  valueDate: "2026-02-08T00:00:00"
