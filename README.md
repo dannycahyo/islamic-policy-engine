@@ -80,34 +80,42 @@ islamic-policy-engine/
 
 ### Evaluate a Policy
 
+All evaluation requests wrap input fields inside a `"data"` object:
+
 ```bash
-# Transaction Limit
+# Transaction Limit — check if SILVER tier can transact 8M IDR
 curl -X POST http://localhost:8080/api/v1/policies/TRANSACTION_LIMIT/evaluate \
   -H "Content-Type: application/json" \
   -d '{
-    "accountTier": "SILVER",
-    "transactionAmount": 8000000,
-    "dailyCumulativeAmount": 5000000
+    "data": {
+      "accountTier": "SILVER",
+      "transactionAmount": 8000000,
+      "dailyCumulativeAmount": 5000000
+    }
   }'
 
-# Financing Eligibility
+# Financing Eligibility — check Murabahah eligibility
 curl -X POST http://localhost:8080/api/v1/policies/FINANCING_ELIGIBILITY/evaluate \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 30,
-    "monthlyIncome": 15000000,
-    "accountStatus": "ACTIVE",
-    "requestedAmount": 100000000
+    "data": {
+      "age": 30,
+      "monthlyIncome": 15000000,
+      "accountStatus": "ACTIVE",
+      "requestedAmount": 100000000
+    }
   }'
 
-# Risk Flag
+# Risk Flag — assess transaction risk
 curl -X POST http://localhost:8080/api/v1/policies/RISK_FLAG/evaluate \
   -H "Content-Type: application/json" \
   -d '{
-    "transactionAmount": 150000000,
-    "destinationRegion": "HIGH_RISK_REGION_A",
-    "transactionFrequency": 15,
-    "isNewBeneficiary": true
+    "data": {
+      "transactionAmount": 150000000,
+      "destinationRegion": "IRAN",
+      "transactionFrequency": 15,
+      "isNewBeneficiary": true
+    }
   }'
 ```
 
@@ -117,15 +125,27 @@ curl -X POST http://localhost:8080/api/v1/policies/RISK_FLAG/evaluate \
 # List all rules
 curl http://localhost:8080/api/v1/rules
 
+# Get a specific rule (with DRL source)
+curl http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+# Update rule parameters (changes take effect immediately)
+curl -X PUT http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": [
+      {"key": "silverDailyLimit", "value": "15000000", "type": "DECIMAL", "description": "Daily limit for SILVER tier"}
+    ]
+  }'
+
 # Toggle a rule off
 curl -X PATCH http://localhost:8080/api/v1/rules/{id}/status \
   -H "Content-Type: application/json" \
-  -d '{ "isActive": false }'
+  -d '{"isActive": false}'
 
-# Dry-run test (no audit record)
+# Dry-run test (no audit record created)
 curl -X POST http://localhost:8080/api/v1/rules/{id}/test \
   -H "Content-Type: application/json" \
-  -d '{ "accountTier": "GOLD", "transactionAmount": 40000000, "dailyCumulativeAmount": 0 }'
+  -d '{"data": {"accountTier": "GOLD", "transactionAmount": 40000000, "dailyCumulativeAmount": 0}}'
 
 # View audit log
 curl "http://localhost:8080/api/v1/audit?policyType=TRANSACTION_LIMIT&page=0&size=10"
@@ -146,7 +166,7 @@ curl "http://localhost:8080/api/v1/audit?policyType=TRANSACTION_LIMIT&page=0&siz
 cd policy-engine-backend
 
 # Create the database
-createdb -U postgres policy_engine
+createdb -U postgres islamic_policy
 
 # Run with local profile
 mvn spring-boot:run
