@@ -15,10 +15,11 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("ruleCache");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("ruleCache", "kieBases");
         cacheManager.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(10, TimeUnit.MINUTES)
-                .maximumSize(100));
+                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .maximumSize(50)
+                .recordStats());
         return cacheManager;
     }
 }
