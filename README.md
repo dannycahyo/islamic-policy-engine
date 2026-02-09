@@ -93,6 +93,15 @@ curl -X POST http://localhost:8080/api/v1/policies/TRANSACTION_LIMIT/evaluate \
       "dailyCumulativeAmount": 5000000
     }
   }'
+# Sample response:
+# {
+#   "policyType": "TRANSACTION_LIMIT",
+#   "ruleId": "...",
+#   "ruleVersion": 1,
+#   "result": { "allowed": true, "reason": "Transaction within daily limit", "remainingLimit": 2000000 },
+#   "evaluationMs": 45,
+#   "timestamp": "2025-01-01T12:00:00"
+# }
 
 # Financing Eligibility — check Murabahah eligibility
 curl -X POST http://localhost:8080/api/v1/policies/FINANCING_ELIGIBILITY/evaluate \
@@ -105,6 +114,15 @@ curl -X POST http://localhost:8080/api/v1/policies/FINANCING_ELIGIBILITY/evaluat
       "requestedAmount": 100000000
     }
   }'
+# Sample response:
+# {
+#   "policyType": "FINANCING_ELIGIBILITY",
+#   "ruleId": "...",
+#   "ruleVersion": 1,
+#   "result": { "eligible": true, "reasons": ["Income meets minimum requirements", "Account in good standing"], "maxFinancingAmount": 250000000 },
+#   "evaluationMs": 30,
+#   "timestamp": "2025-01-01T12:00:00"
+# }
 
 # Risk Flag — assess transaction risk
 curl -X POST http://localhost:8080/api/v1/policies/RISK_FLAG/evaluate \
@@ -117,19 +135,31 @@ curl -X POST http://localhost:8080/api/v1/policies/RISK_FLAG/evaluate \
       "isNewBeneficiary": true
     }
   }'
+# Sample response:
+# {
+#   "policyType": "RISK_FLAG",
+#   "ruleId": "...",
+#   "ruleVersion": 1,
+#   "result": { "flagged": true, "riskScore": 85, "flags": ["High-value transaction", "High-risk destination region", "New beneficiary"] },
+#   "evaluationMs": 25,
+#   "timestamp": "2025-01-01T12:00:00"
+# }
 ```
 
 ### Manage Rules
 
 ```bash
-# List all rules
+# List all rules (paginated)
 curl http://localhost:8080/api/v1/rules
 
+# Store a rule ID for subsequent commands
+RULE_ID=$(curl -s http://localhost:8080/api/v1/rules | jq -r '.content[0].id')
+
 # Get a specific rule (with DRL source)
-curl http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+curl http://localhost:8080/api/v1/rules/$RULE_ID
 
 # Update rule parameters (changes take effect immediately)
-curl -X PUT http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+curl -X PUT http://localhost:8080/api/v1/rules/$RULE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "parameters": [
@@ -138,12 +168,12 @@ curl -X PUT http://localhost:8080/api/v1/rules/a1b2c3d4-e5f6-7890-abcd-ef1234567
   }'
 
 # Toggle a rule off
-curl -X PATCH http://localhost:8080/api/v1/rules/{id}/status \
+curl -X PATCH http://localhost:8080/api/v1/rules/$RULE_ID/status \
   -H "Content-Type: application/json" \
   -d '{"isActive": false}'
 
 # Dry-run test (no audit record created)
-curl -X POST http://localhost:8080/api/v1/rules/{id}/test \
+curl -X POST http://localhost:8080/api/v1/rules/$RULE_ID/test \
   -H "Content-Type: application/json" \
   -d '{"data": {"accountTier": "GOLD", "transactionAmount": 40000000, "dailyCumulativeAmount": 0}}'
 
