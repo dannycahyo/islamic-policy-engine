@@ -1,5 +1,7 @@
 package com.islamic.policyengine.model.fact;
 
+import com.islamic.policyengine.model.annotation.InputField;
+import com.islamic.policyengine.model.annotation.ResultField;
 import com.islamic.policyengine.model.enums.AccountTier;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,13 +16,17 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class TransactionFact {
 
-    // Input fields
+    @InputField
     private AccountTier accountTier;
+    @InputField
     private BigDecimal transactionAmount;
+    @InputField
     private BigDecimal dailyCumulativeAmount;
 
-    // Result fields
+    @ResultField
     private Boolean allowed;
+    @ResultField
     private String reason;
+    @ResultField
     private BigDecimal remainingLimit;
 }

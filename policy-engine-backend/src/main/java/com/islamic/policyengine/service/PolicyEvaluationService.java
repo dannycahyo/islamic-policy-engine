@@ -1,16 +1,13 @@
 package com.islamic.policyengine.service;
 
 import com.islamic.policyengine.exception.PolicyNotFoundException;
+import com.islamic.policyengine.model.annotation.InputField;
+import com.islamic.policyengine.model.annotation.ResultField;
 import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
 import com.islamic.policyengine.model.entity.Rule;
 import com.islamic.policyengine.model.entity.RuleParameter;
-import com.islamic.policyengine.model.enums.AccountStatus;
-import com.islamic.policyengine.model.enums.AccountTier;
 import com.islamic.policyengine.model.enums.PolicyType;
-import com.islamic.policyengine.model.fact.FinancingRequestFact;
-import com.islamic.policyengine.model.fact.RiskAssessmentFact;
-import com.islamic.policyengine.model.fact.TransactionFact;
 import com.islamic.policyengine.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +17,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -38,6 +33,7 @@ public class PolicyEvaluationService {
     private final DroolsEngineService droolsEngineService;
     private final RuleRepository ruleRepository;
     private final AuditService auditService;
+    private final FactMetadataService factMetadataService;
 
     private final ExecutorService ruleExecutor = Executors.newCachedThreadPool();
 
@@ -88,7 +84,7 @@ public class PolicyEvaluationService {
 
             long durationMs = (System.nanoTime() - start) / 1_000_000;
 
-            Object result = mapToResult(policyType, fact);
+            Object result = mapToResult(fact);
 
             EvaluationResponse response = EvaluationResponse.builder()
                     .policyType(policyType)
@@ -136,83 +132,119 @@ public class PolicyEvaluationService {
         }
     }
 
+    /**
+     * Creates a fact instance using reflection: instantiates the fact class for the given
+     * policy type, then populates all @InputField-annotated fields from the request data.
+     */
     private Object mapToFact(PolicyType policyType, EvaluationRequest request) {
+        Class<?> factClass = factMetadataService.getFactClassForPolicyType(policyType);
+        if (factClass == null) {
+            throw new IllegalArgumentException("Unsupported policy type: " + policyType);
+        }
+
         Map<String, Object> data = request.getData();
 
-        switch (policyType) {
-            case TRANSACTION_LIMIT:
-                return TransactionFact.builder()
-                        .accountTier(AccountTier.valueOf(String.valueOf(data.get("accountTier"))))
-                        .transactionAmount(toBigDecimal(data.get("transactionAmount")))
-                        .dailyCumulativeAmount(toBigDecimal(data.get("dailyCumulativeAmount")))
-                        .build();
+        try {
+            Object fact = factClass.getDeclaredConstructor().newInstance();
 
-            case FINANCING_ELIGIBILITY:
-                return FinancingRequestFact.builder()
-                        .age(toInteger(data.get("age")))
-                        .monthlyIncome(toBigDecimal(data.get("monthlyIncome")))
-                        .accountStatus(AccountStatus.valueOf(String.valueOf(data.get("accountStatus"))))
-                        .requestedAmount(toBigDecimal(data.get("requestedAmount")))
-                        .build();
+            for (Field field : factClass.getDeclaredFields()) {
+                if (!field.isAnnotationPresent(InputField.class)) {
+                    continue;
+                }
 
-            case RISK_FLAG:
-                return RiskAssessmentFact.builder()
-                        .transactionAmount(toBigDecimal(data.get("transactionAmount")))
-                        .destinationRegion(String.valueOf(data.get("destinationRegion")))
-                        .transactionFrequency(toInteger(data.get("transactionFrequency")))
-                        .isNewBeneficiary(toBoolean(data.get("isNewBeneficiary")))
-                        .riskScore(0)
-                        .flagged(false)
-                        .build();
+                String fieldName = field.getName();
+                Object rawValue = data.get(fieldName);
 
-            default:
-                throw new IllegalArgumentException("Unsupported policy type: " + policyType);
+                if (rawValue == null) {
+                    continue;
+                }
+
+                field.setAccessible(true);
+                Object converted = convertValue(rawValue, field.getType());
+                field.set(fact, converted);
+            }
+
+            // Initialize result fields with sensible defaults
+            for (Field field : factClass.getDeclaredFields()) {
+                if (!field.isAnnotationPresent(ResultField.class)) {
+                    continue;
+                }
+                field.setAccessible(true);
+                Object currentValue = field.get(fact);
+
+                if (currentValue == null && List.class.isAssignableFrom(field.getType())) {
+                    field.set(fact, new ArrayList<>());
+                }
+                if (currentValue == null && field.getType() == Boolean.class) {
+                    field.set(fact, false);
+                }
+                if (currentValue == null && field.getType() == Integer.class) {
+                    field.set(fact, 0);
+                }
+            }
+
+            return fact;
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to create fact instance for " + factClass.getSimpleName(), e);
         }
     }
 
-    private Object mapToResult(PolicyType policyType, Object fact) {
+    /**
+     * Reads all @ResultField-annotated fields from the fact instance into a Map.
+     */
+    private Object mapToResult(Object fact) {
         Map<String, Object> result = new HashMap<>();
 
-        switch (policyType) {
-            case TRANSACTION_LIMIT:
-                TransactionFact txFact = (TransactionFact) fact;
-                result.put("allowed", txFact.getAllowed());
-                result.put("reason", txFact.getReason());
-                result.put("remainingLimit", txFact.getRemainingLimit());
-                break;
-
-            case FINANCING_ELIGIBILITY:
-                FinancingRequestFact frFact = (FinancingRequestFact) fact;
-                result.put("eligible", frFact.getEligible());
-                result.put("reasons", frFact.getReasons());
-                result.put("maxFinancingAmount", frFact.getMaxFinancingAmount());
-                break;
-
-            case RISK_FLAG:
-                RiskAssessmentFact raFact = (RiskAssessmentFact) fact;
-                result.put("flagged", raFact.getFlagged());
-                result.put("riskScore", raFact.getRiskScore());
-                result.put("flags", raFact.getFlags());
-                break;
+        for (Field field : fact.getClass().getDeclaredFields()) {
+            if (!field.isAnnotationPresent(ResultField.class)) {
+                continue;
+            }
+            try {
+                field.setAccessible(true);
+                result.put(field.getName(), field.get(fact));
+            } catch (IllegalAccessException e) {
+                log.warn("Failed to read result field: {}", field.getName(), e);
+            }
         }
 
         return result;
     }
 
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) return BigDecimal.ZERO;
-        return new BigDecimal(String.valueOf(value));
-    }
+    /**
+     * Converts a raw value (from JSON deserialization) to the target Java type.
+     */
+    @SuppressWarnings("unchecked")
+    private Object convertValue(Object rawValue, Class<?> targetType) {
+        if (rawValue == null) return null;
 
-    private Integer toInteger(Object value) {
-        if (value == null) return 0;
-        if (value instanceof Integer) return (Integer) value;
-        return Integer.parseInt(String.valueOf(value));
-    }
+        String strValue = String.valueOf(rawValue);
 
-    private Boolean toBoolean(Object value) {
-        if (value == null) return false;
-        if (value instanceof Boolean) return (Boolean) value;
-        return Boolean.parseBoolean(String.valueOf(value));
+        if (targetType == BigDecimal.class) {
+            return new BigDecimal(strValue);
+        }
+        if (targetType == Integer.class || targetType == int.class) {
+            if (rawValue instanceof Integer) return rawValue;
+            return Integer.parseInt(strValue);
+        }
+        if (targetType == Long.class || targetType == long.class) {
+            if (rawValue instanceof Long) return rawValue;
+            return Long.parseLong(strValue);
+        }
+        if (targetType == Double.class || targetType == double.class) {
+            if (rawValue instanceof Double) return rawValue;
+            return Double.parseDouble(strValue);
+        }
+        if (targetType == Boolean.class || targetType == boolean.class) {
+            if (rawValue instanceof Boolean) return rawValue;
+            return Boolean.parseBoolean(strValue);
+        }
+        if (targetType == String.class) {
+            return strValue;
+        }
+        if (targetType.isEnum()) {
+            return Enum.valueOf((Class<Enum>) targetType, strValue);
+        }
+
+        return rawValue;
     }
 }

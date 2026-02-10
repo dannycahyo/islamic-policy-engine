@@ -4,9 +4,6 @@ import com.islamic.policyengine.model.dto.ActionDTO;
 import com.islamic.policyengine.model.dto.ConditionDTO;
 import com.islamic.policyengine.model.dto.FactMetadataDTO;
 import com.islamic.policyengine.model.dto.RuleDefinitionDTO;
-import com.islamic.policyengine.model.fact.FinancingRequestFact;
-import com.islamic.policyengine.model.fact.RiskAssessmentFact;
-import com.islamic.policyengine.model.fact.TransactionFact;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,26 +18,14 @@ public class DrlGeneratorService {
 
     private final FactMetadataService factMetadataService;
 
-    // Derive enum field → enum class name mapping from fact classes via reflection
-    private static final Map<String, String> ENUM_FIELD_TO_CLASS = buildEnumFieldMap();
-
-    private static Map<String, String> buildEnumFieldMap() {
-        Map<String, String> map = new HashMap<>();
-        for (Class<?> factClass : List.of(
-                TransactionFact.class, FinancingRequestFact.class, RiskAssessmentFact.class)) {
-            for (Field field : factClass.getDeclaredFields()) {
-                if (field.getType().isEnum()) {
-                    map.put(field.getName(), field.getType().getSimpleName());
-                }
-            }
-        }
-        return Collections.unmodifiableMap(map);
-    }
-
     public String generateDrl(RuleDefinitionDTO definition) {
         StringBuilder drl = new StringBuilder();
         String factType = definition.getFactType();
         String factPackage = factMetadataService.getFactPackage();
+
+        // Resolve the fact class to derive enum field mappings dynamically
+        Class<?> factClass = factMetadataService.getFactClass(factType);
+        Map<String, String> enumFieldMap = buildEnumFieldMap(factClass);
 
         // Package declaration
         drl.append("package com.islamic.policyengine.rules;\n\n");
@@ -59,7 +44,7 @@ public class DrlGeneratorService {
                     needsBigDecimal = true;
                 }
                 if ("ENUM".equals(condition.getValueType())) {
-                    String enumClass = ENUM_FIELD_TO_CLASS.get(condition.getField());
+                    String enumClass = enumFieldMap.get(condition.getField());
                     if (enumClass != null) {
                         enumImports.add(ENUMS_PACKAGE + "." + enumClass);
                     }
@@ -103,7 +88,7 @@ public class DrlGeneratorService {
                 drl.append("            ");
                 drl.append(cond.getField());
                 drl.append(" ").append(cond.getOperator()).append(" ");
-                drl.append(formatValue(cond.getValue(), cond.getValueType(), cond.getField()));
+                drl.append(formatValue(cond.getValue(), cond.getValueType(), cond.getField(), enumFieldMap));
                 if (i < conditions.size() - 1) {
                     drl.append(",");
                 }
@@ -122,7 +107,7 @@ public class DrlGeneratorService {
 
             for (ActionDTO action : definition.getActions()) {
                 String setterName = "set" + capitalize(action.getField());
-                String formattedValue = formatValue(action.getValue(), action.getValueType(), action.getField());
+                String formattedValue = formatValue(action.getValue(), action.getValueType(), action.getField(), enumFieldMap);
 
                 // For LIST_STRING result fields, use .add() pattern
                 if (factDef != null && factDef.getResultFields().containsKey(action.getField())) {
@@ -147,14 +132,28 @@ public class DrlGeneratorService {
         return drl.toString();
     }
 
-    private String formatValue(String value, String valueType, String field) {
+    /**
+     * Builds a map of field name → enum class simple name for a given fact class.
+     */
+    private Map<String, String> buildEnumFieldMap(Class<?> factClass) {
+        if (factClass == null) return Collections.emptyMap();
+        Map<String, String> map = new HashMap<>();
+        for (Field field : factClass.getDeclaredFields()) {
+            if (field.getType().isEnum()) {
+                map.put(field.getName(), field.getType().getSimpleName());
+            }
+        }
+        return map;
+    }
+
+    private String formatValue(String value, String valueType, String field, Map<String, String> enumFieldMap) {
         if (value == null) return "null";
 
         switch (valueType) {
             case "BIG_DECIMAL":
                 return "new BigDecimal(\"" + value + "\")";
             case "ENUM":
-                String enumClass = ENUM_FIELD_TO_CLASS.get(field);
+                String enumClass = enumFieldMap.get(field);
                 if (enumClass != null) {
                     return enumClass + "." + value;
                 }

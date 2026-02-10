@@ -1,5 +1,7 @@
 package com.islamic.policyengine.service;
 
+import com.islamic.policyengine.model.annotation.InputField;
+import com.islamic.policyengine.model.annotation.ResultField;
 import com.islamic.policyengine.model.dto.FactMetadataDTO;
 import com.islamic.policyengine.model.dto.FactMetadataDTO.FactDefinition;
 import com.islamic.policyengine.model.dto.FactMetadataDTO.FieldDefinition;
@@ -27,26 +29,14 @@ public class FactMetadataService {
             "ENUM", List.of("==", "!=")
     );
 
-    // Registry of fact classes with their input/result field boundaries.
-    // To add a new fact, register it here with its input field names.
-    private static final Map<String, FactRegistration> FACT_REGISTRY = new LinkedHashMap<>();
+    // Single registry: fact class name → Java class.
+    // To add a new fact, add its class here and annotate fields with @InputField / @ResultField.
+    private static final Map<String, Class<?>> FACT_CLASSES = new LinkedHashMap<>();
 
     static {
-        FACT_REGISTRY.put("TransactionFact", new FactRegistration(
-                TransactionFact.class,
-                Set.of("accountTier", "transactionAmount", "dailyCumulativeAmount"),
-                Set.of("allowed", "reason", "remainingLimit")
-        ));
-        FACT_REGISTRY.put("FinancingRequestFact", new FactRegistration(
-                FinancingRequestFact.class,
-                Set.of("age", "monthlyIncome", "accountStatus", "requestedAmount"),
-                Set.of("eligible", "reasons", "maxFinancingAmount")
-        ));
-        FACT_REGISTRY.put("RiskAssessmentFact", new FactRegistration(
-                RiskAssessmentFact.class,
-                Set.of("transactionAmount", "destinationRegion", "transactionFrequency", "isNewBeneficiary"),
-                Set.of("flagged", "riskScore", "flags")
-        ));
+        FACT_CLASSES.put("TransactionFact", TransactionFact.class);
+        FACT_CLASSES.put("FinancingRequestFact", FinancingRequestFact.class);
+        FACT_CLASSES.put("RiskAssessmentFact", RiskAssessmentFact.class);
     }
 
     private static final Map<String, String> POLICY_TYPE_TO_FACT = Map.of(
@@ -58,22 +48,20 @@ public class FactMetadataService {
     public FactMetadataDTO getMetadata() {
         Map<String, FactDefinition> facts = new LinkedHashMap<>();
 
-        for (Map.Entry<String, FactRegistration> entry : FACT_REGISTRY.entrySet()) {
+        for (Map.Entry<String, Class<?>> entry : FACT_CLASSES.entrySet()) {
             String factName = entry.getKey();
-            FactRegistration reg = entry.getValue();
-            Class<?> clazz = reg.factClass;
+            Class<?> clazz = entry.getValue();
 
             Map<String, FieldDefinition> inputFields = new LinkedHashMap<>();
             Map<String, FieldDefinition> resultFields = new LinkedHashMap<>();
 
             for (Field field : clazz.getDeclaredFields()) {
-                String fieldName = field.getName();
                 FieldDefinition fieldDef = buildFieldDefinition(field);
 
-                if (reg.inputFields.contains(fieldName)) {
-                    inputFields.put(fieldName, fieldDef);
-                } else if (reg.resultFields.contains(fieldName)) {
-                    resultFields.put(fieldName, fieldDef);
+                if (field.isAnnotationPresent(InputField.class)) {
+                    inputFields.put(field.getName(), fieldDef);
+                } else if (field.isAnnotationPresent(ResultField.class)) {
+                    resultFields.put(field.getName(), fieldDef);
                 }
             }
 
@@ -95,12 +83,37 @@ public class FactMetadataService {
                 .build();
     }
 
+    /**
+     * Returns the Java Class for a given fact type name (e.g. "TransactionFact").
+     */
+    public Class<?> getFactClass(String factTypeName) {
+        return FACT_CLASSES.get(factTypeName);
+    }
+
+    /**
+     * Returns the default fact type name for a given policy type string.
+     */
     public String getDefaultFactForPolicyType(String policyType) {
         return POLICY_TYPE_TO_FACT.getOrDefault(policyType, null);
     }
 
+    /**
+     * Returns the fact class for a given PolicyType enum.
+     */
+    public Class<?> getFactClassForPolicyType(PolicyType policyType) {
+        String factName = POLICY_TYPE_TO_FACT.get(policyType.name());
+        return factName != null ? FACT_CLASSES.get(factName) : null;
+    }
+
     public String getFactPackage() {
         return FACT_PACKAGE;
+    }
+
+    /**
+     * Returns all registered fact classes (for enum scanning, etc.).
+     */
+    public Collection<Class<?>> getAllFactClasses() {
+        return FACT_CLASSES.values();
     }
 
     private FieldDefinition buildFieldDefinition(Field field) {
@@ -120,7 +133,7 @@ public class FactMetadataService {
                 .build();
     }
 
-    private String mapJavaType(Class<?> type) {
+    static String mapJavaType(Class<?> type) {
         if (type == BigDecimal.class) return "BIG_DECIMAL";
         if (type == Integer.class || type == int.class) return "INTEGER";
         if (type == String.class) return "STRING";
@@ -128,17 +141,5 @@ public class FactMetadataService {
         if (type.isEnum()) return "ENUM";
         if (List.class.isAssignableFrom(type)) return "LIST_STRING";
         return "STRING";
-    }
-
-    private static class FactRegistration {
-        final Class<?> factClass;
-        final Set<String> inputFields;
-        final Set<String> resultFields;
-
-        FactRegistration(Class<?> factClass, Set<String> inputFields, Set<String> resultFields) {
-            this.factClass = factClass;
-            this.inputFields = inputFields;
-            this.resultFields = resultFields;
-        }
     }
 }
