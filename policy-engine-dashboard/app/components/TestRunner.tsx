@@ -1,30 +1,17 @@
 import { useReducer } from "react";
+import { useFetcher } from "react-router";
 import type { PolicyType, EvaluationResponse } from "~/lib/types";
-import { testRule } from "~/lib/api";
 
 interface TestState {
   input: string;
-  result: EvaluationResponse | null;
-  error: string | null;
-  loading: boolean;
 }
 
-type TestAction =
-  | { type: "SET_INPUT"; value: string }
-  | { type: "START_TEST" }
-  | { type: "TEST_SUCCESS"; result: EvaluationResponse }
-  | { type: "TEST_ERROR"; error: string };
+type TestAction = { type: "SET_INPUT"; value: string };
 
 function testReducer(state: TestState, action: TestAction): TestState {
   switch (action.type) {
     case "SET_INPUT":
-      return { ...state, input: action.value, error: null };
-    case "START_TEST":
-      return { ...state, loading: true, error: null, result: null };
-    case "TEST_SUCCESS":
-      return { ...state, loading: false, result: action.result };
-    case "TEST_ERROR":
-      return { ...state, loading: false, error: action.error };
+      return { ...state, input: action.value };
     default:
       return state;
   }
@@ -33,38 +20,40 @@ function testReducer(state: TestState, action: TestAction): TestState {
 const SAMPLE_INPUTS: Record<string, string> = {
   TRANSACTION_LIMIT: JSON.stringify(
     {
-      customerId: "CUST-001",
-      customerTier: "GOLD",
+      accountTier: "GOLD",
       transactionAmount: 5000.0,
-      transactionCurrency: "MYR",
+      dailyCumulativeAmount: 10000.0,
     },
     null,
     2
   ),
   FINANCING_ELIGIBILITY: JSON.stringify(
     {
-      customerId: "CUST-001",
+      age: 30,
       monthlyIncome: 8000.0,
-      existingDebt: 1000.0,
+      accountStatus: "ACTIVE",
       requestedAmount: 50000.0,
-      financingType: "MURABAHAH",
-      employmentYears: 3,
     },
     null,
     2
   ),
   RISK_FLAG: JSON.stringify(
     {
-      customerId: "CUST-001",
       transactionAmount: 25000.0,
-      transactionType: "TRANSFER",
-      destinationCountry: "MY",
+      destinationRegion: "MY",
+      transactionFrequency: 5,
       isNewBeneficiary: true,
     },
     null,
     2
   ),
 };
+
+interface ActionData {
+  success: boolean;
+  result?: EvaluationResponse;
+  message?: string;
+}
 
 export function TestRunner({
   ruleId,
@@ -73,25 +62,24 @@ export function TestRunner({
   ruleId: string | number;
   policyType: PolicyType;
 }) {
+  const fetcher = useFetcher<ActionData>();
   const [state, dispatch] = useReducer(testReducer, {
     input: SAMPLE_INPUTS[policyType] || "{}",
-    result: null,
-    error: null,
-    loading: false,
   });
 
-  async function handleRun() {
-    dispatch({ type: "START_TEST" });
+  const isLoading = fetcher.state !== "idle";
+  const actionData = fetcher.data;
+
+  function handleRun() {
     try {
-      const inputData = JSON.parse(state.input);
-      const result = await testRule(ruleId, { policyType, inputData });
-      dispatch({ type: "TEST_SUCCESS", result });
-    } catch (err) {
-      dispatch({
-        type: "TEST_ERROR",
-        error: err instanceof SyntaxError ? "Invalid JSON input" : String(err instanceof Error ? err.message : err),
-      });
+      JSON.parse(state.input);
+    } catch {
+      return;
     }
+    fetcher.submit(
+      { inputData: state.input },
+      { method: "POST" }
+    );
   }
 
   return (
@@ -111,10 +99,10 @@ export function TestRunner({
 
       <button
         onClick={handleRun}
-        disabled={state.loading}
+        disabled={isLoading}
         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
       >
-        {state.loading ? (
+        {isLoading ? (
           <>
             <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -132,23 +120,23 @@ export function TestRunner({
         )}
       </button>
 
-      {state.error && (
+      {actionData && !actionData.success && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm font-medium text-red-800">Error</p>
-          <p className="mt-1 text-sm text-red-600">{state.error}</p>
+          <p className="mt-1 text-sm text-red-600">{actionData.message}</p>
         </div>
       )}
 
-      {state.result && (
+      {actionData?.success && actionData.result && (
         <div>
           <h4 className="mb-2 text-sm font-medium text-gray-700">Result</h4>
           <div className="rounded-lg border border-gray-200 bg-gray-900 p-4">
             <div className="mb-2 flex items-center gap-4 text-xs text-gray-400">
-              <span>Evaluation: {state.result.evaluationMs}ms</span>
-              <span>Rule v{state.result.ruleVersion}</span>
+              <span>Evaluation: {actionData.result.evaluationMs}ms</span>
+              <span>Rule v{actionData.result.ruleVersion}</span>
             </div>
             <pre className="overflow-auto text-sm text-green-400">
-              {JSON.stringify(state.result.result, null, 2)}
+              {JSON.stringify(actionData.result.result, null, 2)}
             </pre>
           </div>
         </div>

@@ -119,7 +119,7 @@ export function toggleRuleStatus(
 
 export function testRule(
   id: number | string,
-  data: { policyType: PolicyType; inputData: Record<string, unknown> }
+  data: { data: Record<string, unknown> }
 ): Promise<EvaluationResponse> {
   return request<EvaluationResponse>(`/api/v1/rules/${id}/test`, {
     method: "POST",

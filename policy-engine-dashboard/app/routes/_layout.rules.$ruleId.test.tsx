@@ -4,7 +4,7 @@ import {
   isRouteErrorResponse,
 } from "react-router";
 import type { Route } from "./+types/_layout.rules.$ruleId.test";
-import { getRule } from "~/lib/api";
+import { getRule, testRule } from "~/lib/api";
 import type { Rule } from "~/lib/types";
 import { PolicyTypeBadge, StatusBadge } from "~/components/StatusBadge";
 import { TestRunner } from "~/components/TestRunner";
@@ -16,6 +16,22 @@ interface TestPageData {
 export async function loader({ params }: Route.LoaderArgs): Promise<TestPageData> {
   const rule = await getRule(params.ruleId);
   return { rule };
+}
+
+export async function action({ request, params }: Route.ActionArgs) {
+  const formData = await request.formData();
+  const inputJson = formData.get("inputData") as string;
+
+  try {
+    const inputData = JSON.parse(inputJson);
+    const result = await testRule(params.ruleId, { data: inputData });
+    return { success: true, result };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Test failed",
+    };
+  }
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
