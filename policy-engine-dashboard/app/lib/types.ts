@@ -69,3 +69,51 @@ export const POLICY_TYPE_LABELS: Record<PolicyType, string> = {
   [PolicyType.FINANCING_ELIGIBILITY]: "Financing Eligibility",
   [PolicyType.RISK_FLAG]: "Risk Flag",
 };
+
+// Visual Rule Builder types
+
+export interface FieldDefinition {
+  type: string;
+  enumValues?: string[];
+}
+
+export interface FactDefinition {
+  packageName: string;
+  inputFields: Record<string, FieldDefinition>;
+  resultFields: Record<string, FieldDefinition>;
+}
+
+export interface FactMetadata {
+  facts: Record<string, FactDefinition>;
+  operators: Record<string, string[]>;
+  policyTypes: string[];
+}
+
+export interface ConditionRow {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+  valueType: string;
+}
+
+export interface ActionRow {
+  id: string;
+  field: string;
+  value: string;
+  valueType: string;
+}
+
+export interface RuleDefinition {
+  ruleName: string;
+  policyType: string;
+  factType: string;
+  conditions: { field: string; operator: string; value: string; valueType: string }[];
+  actions: { field: string; value: string; valueType: string }[];
+}
+
+export const POLICY_TYPE_TO_FACT: Record<string, string> = {
+  TRANSACTION_LIMIT: "TransactionFact",
+  FINANCING_ELIGIBILITY: "FinancingRequestFact",
+  RISK_FLAG: "RiskAssessmentFact",
+};

@@ -5,43 +5,61 @@ import {
   useActionData,
   useNavigation,
   useOutletContext,
+  useLoaderData,
   isRouteErrorResponse,
 } from "react-router";
-import { useReducer, useEffect } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import type { Route } from "./+types/_layout.rules.new";
-import { createRule } from "~/lib/api";
-import { PolicyType, POLICY_TYPE_LABELS } from "~/lib/types";
-import type { RuleParameter } from "~/lib/types";
+import { createRule, getFactMetadata, validateDrl } from "~/lib/api";
+import {
+  PolicyType,
+  POLICY_TYPE_LABELS,
+  POLICY_TYPE_TO_FACT,
+} from "~/lib/types";
+import type { RuleParameter, FactMetadata } from "~/lib/types";
 import { ParameterForm } from "~/components/ParameterForm";
-import { DrlEditor } from "~/components/DrlEditor";
+import { ConditionBuilder } from "~/components/ConditionBuilder";
 import type { LayoutContext } from "./_layout";
 
-const DEFAULT_DRL = `package com.islamic.policy.rules;
-
-// Import your fact classes
-// import com.islamic.policy.model.TransactionRequest;
-// import com.islamic.policy.model.PolicyResult;
-
-rule "New Rule"
-    when
-        // Define conditions here
-    then
-        // Define actions here
-end`;
+interface LoaderData {
+  metadata: FactMetadata;
+}
 
 interface FormState {
   drlSource: string;
+  policyType: PolicyType;
+  ruleName: string;
+  validating: boolean;
+  validationErrors: string[];
 }
 
-type FormAction = { type: "SET_DRL"; value: string };
+type FormAction =
+  | { type: "SET_DRL"; value: string }
+  | { type: "SET_POLICY_TYPE"; value: PolicyType }
+  | { type: "SET_RULE_NAME"; value: string }
+  | { type: "SET_VALIDATING"; value: boolean }
+  | { type: "SET_VALIDATION_ERRORS"; errors: string[] };
 
 function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case "SET_DRL":
-      return { ...state, drlSource: action.value };
+      return { ...state, drlSource: action.value, validationErrors: [] };
+    case "SET_POLICY_TYPE":
+      return { ...state, policyType: action.value };
+    case "SET_RULE_NAME":
+      return { ...state, ruleName: action.value };
+    case "SET_VALIDATING":
+      return { ...state, validating: action.value };
+    case "SET_VALIDATION_ERRORS":
+      return { ...state, validationErrors: action.errors, validating: false };
     default:
       return state;
   }
+}
+
+export async function loader(): Promise<LoaderData> {
+  const metadata = await getFactMetadata();
+  return { metadata };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -65,7 +83,13 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   try {
-    const rule = await createRule({ name, description, policyType, drlSource, parameters });
+    const rule = await createRule({
+      name,
+      description,
+      policyType,
+      drlSource,
+      parameters,
+    });
     return redirect(`/rules/${rule.id}`);
   } catch (err) {
     return {
@@ -84,7 +108,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <div className="rounded-lg border border-red-200 bg-red-50 p-6">
       <h2 className="text-lg font-semibold text-red-800">Error</h2>
       <p className="mt-2 text-sm text-red-600">{message}</p>
-      <Link to="/rules" className="mt-4 inline-block text-sm font-medium text-red-700 hover:text-red-800">
+      <Link
+        to="/rules"
+        className="mt-4 inline-block text-sm font-medium text-red-700 hover:text-red-800"
+      >
         Back to Rules
       </Link>
     </div>
@@ -92,14 +119,22 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function NewRulePage() {
+  const { metadata } = useLoaderData<LoaderData>();
   const actionData = useActionData<{ success: boolean; message: string }>();
   const navigation = useNavigation();
   const { dispatch } = useOutletContext<LayoutContext>();
   const isSubmitting = navigation.state === "submitting";
 
+  const defaultPolicyType = PolicyType.TRANSACTION_LIMIT;
   const [state, formDispatch] = useReducer(formReducer, {
-    drlSource: DEFAULT_DRL,
+    drlSource: "",
+    policyType: defaultPolicyType,
+    ruleName: "",
+    validating: false,
+    validationErrors: [],
   });
+
+  const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (actionData && !actionData.success) {
@@ -110,11 +145,48 @@ export default function NewRulePage() {
     }
   }, [actionData, dispatch]);
 
+  const factType = POLICY_TYPE_TO_FACT[state.policyType] ?? "TransactionFact";
+
+  async function handleValidate() {
+    if (!state.drlSource.trim()) {
+      formDispatch({
+        type: "SET_VALIDATION_ERRORS",
+        errors: ["No DRL generated yet. Add conditions and actions first."],
+      });
+      return;
+    }
+    formDispatch({ type: "SET_VALIDATING", value: true });
+    try {
+      const result = await validateDrl(state.drlSource);
+      if (result.valid) {
+        dispatch({
+          type: "ADD_TOAST",
+          payload: { message: "DRL validation passed", type: "success" },
+        });
+        formDispatch({ type: "SET_VALIDATION_ERRORS", errors: [] });
+      } else {
+        formDispatch({
+          type: "SET_VALIDATION_ERRORS",
+          errors: result.errors,
+        });
+      }
+    } catch (err) {
+      formDispatch({
+        type: "SET_VALIDATION_ERRORS",
+        errors: [
+          err instanceof Error ? err.message : "Validation request failed",
+        ],
+      });
+    }
+  }
+
   return (
     <div>
       {/* Breadcrumb */}
       <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
-        <Link to="/rules" className="hover:text-gray-700">Rules</Link>
+        <Link to="/rules" className="hover:text-gray-700">
+          Rules
+        </Link>
         <span>/</span>
         <span className="text-gray-900">New Rule</span>
       </div>
@@ -122,7 +194,7 @@ export default function NewRulePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Create New Rule</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Define a new policy evaluation rule
+          Define a new policy evaluation rule using the visual builder
         </p>
       </div>
 
@@ -134,26 +206,46 @@ export default function NewRulePage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="new-rule-name" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="new-rule-name"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Name
               </label>
               <input
+                ref={nameRef}
                 id="new-rule-name"
                 type="text"
                 name="name"
                 required
+                onChange={(e) =>
+                  formDispatch({
+                    type: "SET_RULE_NAME",
+                    value: e.target.value,
+                  })
+                }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 placeholder="e.g., Gold Tier Transaction Limit"
               />
             </div>
             <div>
-              <label htmlFor="new-rule-policy-type" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="new-rule-policy-type"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Policy Type
               </label>
               <select
                 id="new-rule-policy-type"
                 name="policyType"
                 required
+                value={state.policyType}
+                onChange={(e) =>
+                  formDispatch({
+                    type: "SET_POLICY_TYPE",
+                    value: e.target.value as PolicyType,
+                  })
+                }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 {Object.values(PolicyType).map((type) => (
@@ -164,7 +256,10 @@ export default function NewRulePage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label htmlFor="new-rule-description" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="new-rule-description"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Description
               </label>
               <textarea
@@ -183,24 +278,47 @@ export default function NewRulePage() {
           <ParameterForm initialParameters={[]} name="parameters" />
         </div>
 
-        {/* DRL Editor */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            DRL Source
-          </h2>
-          <input type="hidden" name="drlSource" value={state.drlSource} />
-          <DrlEditor
-            value={state.drlSource}
-            onChange={(v) => formDispatch({ type: "SET_DRL", value: v })}
-            height="400px"
-          />
-        </div>
+        {/* Visual Rule Builder */}
+        <input type="hidden" name="drlSource" value={state.drlSource} />
+        <ConditionBuilder
+          metadata={metadata}
+          ruleName={state.ruleName || "New Rule"}
+          policyType={state.policyType}
+          initialFactType={factType}
+          onDrlChange={(drl) =>
+            formDispatch({ type: "SET_DRL", value: drl })
+          }
+        />
+
+        {/* Validation errors */}
+        {state.validationErrors.length > 0 && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="mb-2 text-sm font-medium text-red-800">
+              Validation Errors
+            </h3>
+            <ul className="list-inside list-disc space-y-1">
+              {state.validationErrors.map((err, idx) => (
+                <li key={idx} className="text-sm text-red-700">
+                  {err}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3">
           <button
+            type="button"
+            onClick={handleValidate}
+            disabled={state.validating || !state.drlSource}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {state.validating ? "Validating..." : "Validate"}
+          </button>
+          <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !state.drlSource}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {isSubmitting ? "Creating..." : "Create Rule"}

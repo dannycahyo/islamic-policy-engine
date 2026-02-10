@@ -5,6 +5,8 @@ import type {
   PaginatedResponse,
   ErrorResponse,
   PolicyType,
+  FactMetadata,
+  RuleDefinition,
 } from "./types";
 
 const BASE_URL =
@@ -160,6 +162,31 @@ export function getAuditLogs(params?: {
   const qs = searchParams.toString();
   return request<PaginatedResponse<AuditLog>>(
     `/api/v1/audit${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getFactMetadata(): Promise<FactMetadata> {
+  return request<FactMetadata>("/api/v1/rules/metadata");
+}
+
+export function generateDrl(
+  definition: RuleDefinition
+): Promise<{ drl: string }> {
+  return request<{ drl: string }>("/api/v1/rules/generate-drl", {
+    method: "POST",
+    body: JSON.stringify(definition),
+  });
+}
+
+export function validateDrl(
+  drlSource: string
+): Promise<{ valid: boolean; errors: string[] }> {
+  return request<{ valid: boolean; errors: string[] }>(
+    "/api/v1/rules/validate-drl",
+    {
+      method: "POST",
+      body: JSON.stringify({ drlSource }),
+    }
   );
 }
 
