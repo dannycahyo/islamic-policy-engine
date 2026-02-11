@@ -149,6 +149,10 @@ export function ConditionBuilder({
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetcher = useFetcher<{ drl?: string; error?: boolean; message?: string }>();
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+  const onDrlChangeRef = useRef(onDrlChange);
+  onDrlChangeRef.current = onDrlChange;
 
   // Reset when fact type changes from outside (policy type change)
   useEffect(() => {
@@ -164,10 +168,10 @@ export function ConditionBuilder({
         dispatch({ type: "SET_DRL_ERROR", error: fetcher.data.message ?? "Failed to generate DRL" });
       } else if (fetcher.data.drl) {
         dispatch({ type: "SET_DRL", drl: fetcher.data.drl });
-        onDrlChange?.(fetcher.data.drl);
+        onDrlChangeRef.current?.(fetcher.data.drl);
       }
     }
-  }, [fetcher.data, onDrlChange]);
+  }, [fetcher.data]);
 
   const factDef = metadata.facts[state.factType];
   const inputFields = factDef?.inputFields ?? {};
@@ -182,7 +186,7 @@ export function ConditionBuilder({
 
     if (!hasConditions && !hasActions) {
       dispatch({ type: "SET_DRL", drl: "" });
-      onDrlChange?.("");
+      onDrlChangeRef.current?.("");
       return;
     }
 
@@ -206,7 +210,7 @@ export function ConditionBuilder({
     dispatch({ type: "SET_DRL_LOADING", loading: true });
     dispatch({ type: "SET_DRL_ERROR", error: null });
 
-    fetcher.submit(JSON.stringify(definition), {
+    fetcherRef.current.submit(JSON.stringify(definition), {
       method: "POST",
       action: "/api/generate-drl",
       encType: "application/json",
@@ -217,8 +221,6 @@ export function ConditionBuilder({
     state.factType,
     ruleName,
     policyType,
-    onDrlChange,
-    fetcher,
   ]);
 
   useEffect(() => {
