@@ -1,4 +1,5 @@
 import { useReducer, useEffect, useCallback, useRef } from "react";
+import { useFetcher } from "react-router";
 import type {
   FactMetadata,
   ConditionRow,
@@ -7,7 +8,6 @@ import type {
   FieldDefinition,
   RuleParameter,
 } from "~/lib/types";
-import { generateDrl } from "~/lib/api";
 import { DrlEditor } from "./DrlEditor";
 
 // State
@@ -151,6 +151,7 @@ export function ConditionBuilder({
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetcher = useFetcher<{ drl?: string; error?: boolean; message?: string }>();
 
   // Reset when fact type changes from outside (policy type change)
   useEffect(() => {
@@ -158,6 +159,18 @@ export function ConditionBuilder({
       dispatch({ type: "RESET", factType: initialFactType });
     }
   }, [initialFactType]);
+
+  // Handle fetcher response
+  useEffect(() => {
+    if (fetcher.data) {
+      if (fetcher.data.error) {
+        dispatch({ type: "SET_DRL_ERROR", error: fetcher.data.message ?? "Failed to generate DRL" });
+      } else if (fetcher.data.drl) {
+        dispatch({ type: "SET_DRL", drl: fetcher.data.drl });
+        onDrlChange?.(fetcher.data.drl);
+      }
+    }
+  }, [fetcher.data, onDrlChange]);
 
   const factDef = metadata.facts[state.factType];
   const inputFields = factDef?.inputFields ?? {};
@@ -203,17 +216,11 @@ export function ConditionBuilder({
     dispatch({ type: "SET_DRL_LOADING", loading: true });
     dispatch({ type: "SET_DRL_ERROR", error: null });
 
-    generateDrl(definition)
-      .then((res) => {
-        dispatch({ type: "SET_DRL", drl: res.drl });
-        onDrlChange?.(res.drl);
-      })
-      .catch((err) => {
-        dispatch({
-          type: "SET_DRL_ERROR",
-          error: err instanceof Error ? err.message : "Failed to generate DRL",
-        });
-      });
+    fetcher.submit(JSON.stringify(definition), {
+      method: "POST",
+      action: "/api/generate-drl",
+      encType: "application/json",
+    });
   }, [
     state.conditions,
     state.actions,
@@ -222,6 +229,7 @@ export function ConditionBuilder({
     policyType,
     validParameters,
     onDrlChange,
+    fetcher,
   ]);
 
   useEffect(() => {
