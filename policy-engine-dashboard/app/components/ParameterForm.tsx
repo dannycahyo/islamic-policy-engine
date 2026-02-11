@@ -1,4 +1,4 @@
-import { useReducer, useEffect } from "react";
+import { useReducer } from "react";
 import type { RuleParameter } from "~/lib/types";
 
 interface ParameterFormState {
@@ -45,20 +45,13 @@ function parameterReducer(
 export function ParameterForm({
   initialParameters,
   name,
-  onParametersChange,
 }: {
   initialParameters: RuleParameter[];
   name: string;
-  onParametersChange?: (parameters: RuleParameter[]) => void;
 }) {
   const [state, dispatch] = useReducer(parameterReducer, {
     parameters: initialParameters,
   });
-
-  // Notify parent when parameters change
-  useEffect(() => {
-    onParametersChange?.(state.parameters);
-  }, [state.parameters, onParametersChange]);
 
   return (
     <div>

@@ -110,7 +110,6 @@ export interface RuleDefinition {
   factType: string;
   conditions: { field: string; operator: string; value: string; valueType: string }[];
   actions: { field: string; value: string; valueType: string }[];
-  parameters?: { key: string; type: string }[];
 }
 
 export const POLICY_TYPE_TO_FACT: Record<string, string> = {

@@ -7,51 +7,21 @@ import {
   useNavigation,
   useOutletContext,
 } from "react-router";
-import { useReducer, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import type { Route } from "./+types/_layout.rules.$ruleId";
-import { getRule, updateRule, toggleRuleStatus, getFactMetadata } from "~/lib/api";
-import type { Rule, RuleParameter, FactMetadata } from "~/lib/types";
-import { POLICY_TYPE_TO_FACT } from "~/lib/types";
+import { getRule, updateRule, toggleRuleStatus } from "~/lib/api";
+import type { Rule } from "~/lib/types";
 import { StatusBadge, PolicyTypeBadge } from "~/components/StatusBadge";
 import { ParameterForm } from "~/components/ParameterForm";
-import { ConditionBuilder } from "~/components/ConditionBuilder";
 import type { LayoutContext } from "./_layout";
 
 interface RuleDetailData {
   rule: Rule;
-  metadata: FactMetadata;
-}
-
-interface EditState {
-  drlSource: string;
-  parameters: RuleParameter[];
-  editorMode: "visual" | "info";
-}
-
-type EditAction =
-  | { type: "SET_DRL"; value: string }
-  | { type: "SET_PARAMETERS"; parameters: RuleParameter[] }
-  | { type: "SET_EDITOR_MODE"; mode: "visual" | "info" };
-
-function editReducer(state: EditState, action: EditAction): EditState {
-  switch (action.type) {
-    case "SET_DRL":
-      return { ...state, drlSource: action.value };
-    case "SET_PARAMETERS":
-      return { ...state, parameters: action.parameters };
-    case "SET_EDITOR_MODE":
-      return { ...state, editorMode: action.mode };
-    default:
-      return state;
-  }
 }
 
 export async function loader({ params }: Route.LoaderArgs): Promise<RuleDetailData> {
-  const [rule, metadata] = await Promise.all([
-    getRule(params.ruleId),
-    getFactMetadata(),
-  ]);
-  return { rule, metadata };
+  const rule = await getRule(params.ruleId);
+  return { rule };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -112,24 +82,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function RuleDetailPage() {
-  const { rule, metadata } = useLoaderData<RuleDetailData>();
+  const { rule } = useLoaderData<RuleDetailData>();
   const actionData = useActionData<{ success: boolean; message: string }>();
   const navigation = useNavigation();
   const { dispatch } = useOutletContext<LayoutContext>();
   const isSubmitting = navigation.state === "submitting";
-
-  const [state, editDispatch] = useReducer(editReducer, {
-    drlSource: rule.drlSource,
-    parameters: rule.parameters,
-    editorMode: "info",
-  });
-
-  const handleParametersChange = useCallback(
-    (parameters: RuleParameter[]) => {
-      editDispatch({ type: "SET_PARAMETERS", parameters });
-    },
-    []
-  );
 
   useEffect(() => {
     if (actionData?.success) {
@@ -144,9 +101,6 @@ export default function RuleDetailPage() {
       });
     }
   }, [actionData, dispatch]);
-
-  const factType =
-    POLICY_TYPE_TO_FACT[rule.policyType] ?? "TransactionFact";
 
   return (
     <div>
@@ -175,7 +129,7 @@ export default function RuleDetailPage() {
             to={`/rules/${rule.id}/drl`}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Code Editor
+            Edit DRL
           </Link>
           <Link
             to={`/rules/${rule.id}/test`}
@@ -205,135 +159,55 @@ export default function RuleDetailPage() {
         </div>
       </div>
 
-      {/* Editor mode toggle */}
-      <div className="mb-4 flex rounded-lg border border-gray-200 bg-white p-1">
-        <button
-          type="button"
-          onClick={() =>
-            editDispatch({ type: "SET_EDITOR_MODE", mode: "info" })
-          }
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            state.editorMode === "info"
-              ? "bg-emerald-100 text-emerald-800"
-              : "text-gray-600 hover:text-gray-800"
-          }`}
-        >
-          Rule Details
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            editDispatch({ type: "SET_EDITOR_MODE", mode: "visual" })
-          }
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            state.editorMode === "visual"
-              ? "bg-emerald-100 text-emerald-800"
-              : "text-gray-600 hover:text-gray-800"
-          }`}
-        >
-          Visual Builder
-        </button>
-      </div>
+      {/* Parameter form */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <Form method="post">
+          <input type="hidden" name="intent" value="update-parameters" />
+          <input type="hidden" name="drlSource" value={rule.drlSource} />
 
-      {/* Rule Details mode */}
-      {state.editorMode === "info" && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <Form method="post">
-            <input type="hidden" name="intent" value="update-parameters" />
-            <input type="hidden" name="drlSource" value={state.drlSource} />
-
-            <div className="mb-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="rule-name" className="mb-1 block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  id="rule-name"
-                  type="text"
-                  name="name"
-                  defaultValue={rule.name}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="rule-description" className="mb-1 block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <input
-                  id="rule-description"
-                  type="text"
-                  name="description"
-                  defaultValue={rule.description}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+          <div className="mb-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="rule-name" className="mb-1 block text-sm font-medium text-gray-700">
+                Name
+              </label>
+              <input
+                id="rule-name"
+                type="text"
+                name="name"
+                defaultValue={rule.name}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
             </div>
-
-            <ParameterForm
-              initialParameters={rule.parameters}
-              name="parameters"
-              onParametersChange={handleParametersChange}
-            />
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </button>
+            <div>
+              <label htmlFor="rule-description" className="mb-1 block text-sm font-medium text-gray-700">
+                Description
+              </label>
+              <input
+                id="rule-description"
+                type="text"
+                name="description"
+                defaultValue={rule.description}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
             </div>
-          </Form>
-        </div>
-      )}
-
-      {/* Visual Builder mode */}
-      {state.editorMode === "visual" && (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <p className="text-sm text-blue-700">
-              Build your rule visually using conditions and actions. The DRL
-              code will be generated automatically. Parameters defined in Rule
-              Details can be referenced in condition and action values.
-            </p>
           </div>
-          <ConditionBuilder
-            metadata={metadata}
-            ruleName={rule.name}
-            policyType={rule.policyType}
-            initialFactType={factType}
-            parameters={state.parameters}
-            onDrlChange={(drl) =>
-              editDispatch({ type: "SET_DRL", value: drl })
-            }
+
+          <ParameterForm
+            initialParameters={rule.parameters}
+            name="parameters"
           />
-          <div className="flex justify-end">
-            <Form method="post">
-              <input type="hidden" name="intent" value="update-parameters" />
-              <input type="hidden" name="name" value={rule.name} />
-              <input type="hidden" name="description" value={rule.description} />
-              <input type="hidden" name="drlSource" value={state.drlSource} />
-              {/* Include current parameters as hidden fields */}
-              {state.parameters.map((param, index) => (
-                <span key={index}>
-                  <input type="hidden" name={`parameters[${index}].key`} value={param.key} />
-                  <input type="hidden" name={`parameters[${index}].value`} value={param.value} />
-                  <input type="hidden" name={`parameters[${index}].type`} value={param.type} />
-                  <input type="hidden" name={`parameters[${index}].description`} value={param.description} />
-                </span>
-              ))}
-              <button
-                type="submit"
-                disabled={isSubmitting || !state.drlSource}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Saving..." : "Save DRL"}
-              </button>
-            </Form>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </button>
           </div>
-        </div>
-      )}
+        </Form>
+      </div>
 
       {/* Metadata */}
       <div className="mt-4 text-xs text-gray-400">

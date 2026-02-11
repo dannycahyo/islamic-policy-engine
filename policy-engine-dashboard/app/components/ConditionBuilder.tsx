@@ -6,7 +6,6 @@ import type {
   ActionRow,
   RuleDefinition,
   FieldDefinition,
-  RuleParameter,
 } from "~/lib/types";
 import { DrlEditor } from "./DrlEditor";
 
@@ -131,14 +130,12 @@ export function ConditionBuilder({
   ruleName,
   policyType,
   initialFactType,
-  parameters = [],
   onDrlChange,
 }: {
   metadata: FactMetadata;
   ruleName: string;
   policyType: string;
   initialFactType: string;
-  parameters?: RuleParameter[];
   onDrlChange?: (drl: string) => void;
 }) {
   const [state, dispatch] = useReducer(builderReducer, {
@@ -176,9 +173,6 @@ export function ConditionBuilder({
   const inputFields = factDef?.inputFields ?? {};
   const resultFields = factDef?.resultFields ?? {};
 
-  // Filter parameters that have a key defined
-  const validParameters = parameters.filter((p) => p.key.trim() !== "");
-
   // Generate DRL preview (debounced)
   const generatePreview = useCallback(() => {
     const hasConditions = state.conditions.some(
@@ -207,10 +201,6 @@ export function ConditionBuilder({
       actions: state.actions
         .filter((a) => a.field && a.value)
         .map(({ field, value, valueType }) => ({ field, value, valueType })),
-      parameters:
-        validParameters.length > 0
-          ? validParameters.map((p) => ({ key: p.key, type: p.type }))
-          : undefined,
     };
 
     dispatch({ type: "SET_DRL_LOADING", loading: true });
@@ -227,7 +217,6 @@ export function ConditionBuilder({
     state.factType,
     ruleName,
     policyType,
-    validParameters,
     onDrlChange,
     fetcher,
   ]);
@@ -284,67 +273,6 @@ export function ConditionBuilder({
     dispatch({ type: "UPDATE_ACTION", id, field: "value", value: "" });
   }
 
-  function handleUseParameter(
-    kind: "condition" | "action",
-    id: string,
-    paramKey: string
-  ) {
-    if (kind === "condition") {
-      dispatch({
-        type: "UPDATE_CONDITION",
-        id,
-        field: "valueType",
-        value: "PARAMETER",
-      });
-      dispatch({
-        type: "UPDATE_CONDITION",
-        id,
-        field: "value",
-        value: paramKey,
-      });
-    } else {
-      dispatch({
-        type: "UPDATE_ACTION",
-        id,
-        field: "valueType",
-        value: "PARAMETER",
-      });
-      dispatch({
-        type: "UPDATE_ACTION",
-        id,
-        field: "value",
-        value: paramKey,
-      });
-    }
-  }
-
-  function handleUseLiteral(
-    kind: "condition" | "action",
-    id: string,
-    fieldName: string
-  ) {
-    const fields = kind === "condition" ? inputFields : resultFields;
-    const fieldDef = fields[fieldName];
-    const valueType = fieldDef?.type ?? "";
-    if (kind === "condition") {
-      dispatch({
-        type: "UPDATE_CONDITION",
-        id,
-        field: "valueType",
-        value: valueType,
-      });
-      dispatch({ type: "UPDATE_CONDITION", id, field: "value", value: "" });
-    } else {
-      dispatch({
-        type: "UPDATE_ACTION",
-        id,
-        field: "valueType",
-        value: valueType,
-      });
-      dispatch({ type: "UPDATE_ACTION", id, field: "value", value: "" });
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* Conditions Section */}
@@ -376,7 +304,6 @@ export function ConditionBuilder({
                 index={index}
                 inputFields={inputFields}
                 operators={getOperatorsForField(condition.field)}
-                parameters={validParameters}
                 onFieldChange={(field) =>
                   handleConditionFieldChange(condition.id, field)
                 }
@@ -395,12 +322,6 @@ export function ConditionBuilder({
                     field: "value",
                     value: val,
                   })
-                }
-                onUseParameter={(paramKey) =>
-                  handleUseParameter("condition", condition.id, paramKey)
-                }
-                onUseLiteral={() =>
-                  handleUseLiteral("condition", condition.id, condition.field)
                 }
                 onRemove={() =>
                   dispatch({ type: "REMOVE_CONDITION", id: condition.id })
@@ -438,7 +359,6 @@ export function ConditionBuilder({
                 action={action}
                 index={index}
                 resultFields={resultFields}
-                parameters={validParameters}
                 onFieldChange={(field) =>
                   handleActionFieldChange(action.id, field)
                 }
@@ -449,12 +369,6 @@ export function ConditionBuilder({
                     field: "value",
                     value: val,
                   })
-                }
-                onUseParameter={(paramKey) =>
-                  handleUseParameter("action", action.id, paramKey)
-                }
-                onUseLiteral={() =>
-                  handleUseLiteral("action", action.id, action.field)
                 }
                 onRemove={() =>
                   dispatch({ type: "REMOVE_ACTION", id: action.id })
@@ -497,28 +411,21 @@ function ConditionRowUI({
   index,
   inputFields,
   operators,
-  parameters,
   onFieldChange,
   onOperatorChange,
   onValueChange,
-  onUseParameter,
-  onUseLiteral,
   onRemove,
 }: {
   condition: ConditionRow;
   index: number;
   inputFields: Record<string, FieldDefinition>;
   operators: string[];
-  parameters: RuleParameter[];
   onFieldChange: (field: string) => void;
   onOperatorChange: (op: string) => void;
   onValueChange: (val: string) => void;
-  onUseParameter: (paramKey: string) => void;
-  onUseLiteral: () => void;
   onRemove: () => void;
 }) {
   const fieldDef = condition.field ? inputFields[condition.field] : null;
-  const isUsingParameter = condition.valueType === "PARAMETER";
 
   return (
     <div className="flex items-center gap-2">
@@ -555,25 +462,13 @@ function ConditionRowUI({
         ))}
       </select>
 
-      {/* Value input with parameter toggle */}
-      {isUsingParameter ? (
-        <ParameterSelect
-          value={condition.value}
-          parameters={parameters}
-          onChange={onValueChange}
-          onSwitchToLiteral={onUseLiteral}
-          disabled={!condition.field}
-        />
-      ) : (
-        <ValueInput
-          fieldDef={fieldDef}
-          value={condition.value}
-          onChange={onValueChange}
-          disabled={!condition.field}
-          parameters={parameters}
-          onUseParameter={onUseParameter}
-        />
-      )}
+      {/* Value input */}
+      <ValueInput
+        fieldDef={fieldDef}
+        value={condition.value}
+        onChange={onValueChange}
+        disabled={!condition.field}
+      />
 
       {/* Remove button */}
       <button
@@ -603,30 +498,23 @@ function ActionRowUI({
   action,
   index,
   resultFields,
-  parameters,
   onFieldChange,
   onValueChange,
-  onUseParameter,
-  onUseLiteral,
   onRemove,
 }: {
   action: ActionRow;
   index: number;
   resultFields: Record<string, FieldDefinition>;
-  parameters: RuleParameter[];
   onFieldChange: (field: string) => void;
   onValueChange: (val: string) => void;
-  onUseParameter: (paramKey: string) => void;
-  onUseLiteral: () => void;
   onRemove: () => void;
 }) {
   const fieldDef = action.field ? resultFields[action.field] : null;
-  const isUsingParameter = action.valueType === "PARAMETER";
 
   return (
     <div className="flex items-center gap-2">
       <span className="w-10 shrink-0 text-xs font-medium text-gray-500">
-        SET
+        {index === 0 ? "SET" : "SET"}
       </span>
 
       {/* Field selector */}
@@ -645,25 +533,13 @@ function ActionRowUI({
 
       <span className="text-sm text-gray-500">=</span>
 
-      {/* Value input with parameter toggle */}
-      {isUsingParameter ? (
-        <ParameterSelect
-          value={action.value}
-          parameters={parameters}
-          onChange={onValueChange}
-          onSwitchToLiteral={onUseLiteral}
-          disabled={!action.field}
-        />
-      ) : (
-        <ValueInput
-          fieldDef={fieldDef}
-          value={action.value}
-          onChange={onValueChange}
-          disabled={!action.field}
-          parameters={parameters}
-          onUseParameter={onUseParameter}
-        />
-      )}
+      {/* Value input */}
+      <ValueInput
+        fieldDef={fieldDef}
+        value={action.value}
+        onChange={onValueChange}
+        disabled={!action.field}
+      />
 
       {/* Remove button */}
       <button
@@ -694,18 +570,12 @@ function ValueInput({
   value,
   onChange,
   disabled,
-  parameters,
-  onUseParameter,
 }: {
   fieldDef: FieldDefinition | null;
   value: string;
   onChange: (val: string) => void;
   disabled: boolean;
-  parameters: RuleParameter[];
-  onUseParameter: (paramKey: string) => void;
 }) {
-  const hasParameters = parameters.length > 0;
-
   if (!fieldDef || disabled) {
     return (
       <input
@@ -719,127 +589,57 @@ function ValueInput({
     );
   }
 
-  const renderInput = () => {
-    switch (fieldDef.type) {
-      case "ENUM":
-        return (
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          >
-            <option value="">Select value...</option>
-            {fieldDef.enumValues?.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        );
-      case "BOOLEAN":
-        return (
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          >
-            <option value="">Select value...</option>
-            <option value="true">true</option>
-            <option value="false">false</option>
-          </select>
-        );
-      case "BIG_DECIMAL":
-      case "INTEGER":
-        return (
-          <input
-            type="number"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Enter number"
-            step={fieldDef.type === "BIG_DECIMAL" ? "any" : "1"}
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
-        );
-      case "STRING":
-      case "LIST_STRING":
-      default:
-        return (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Enter value"
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
-        );
-    }
-  };
-
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
-      {renderInput()}
-      {hasParameters && (
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) onUseParameter(e.target.value);
-          }}
-          title="Use parameter"
-          className="w-9 shrink-0 rounded-lg border border-gray-300 px-1 py-2 text-xs text-gray-500 hover:border-emerald-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        >
-          <option value="">$</option>
-          {parameters.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.key}
-            </option>
-          ))}
-        </select>
-      )}
-    </div>
-  );
-}
-
-function ParameterSelect({
-  value,
-  parameters,
-  onChange,
-  onSwitchToLiteral,
-  disabled,
-}: {
-  value: string;
-  parameters: RuleParameter[];
-  onChange: (val: string) => void;
-  onSwitchToLiteral: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
-      <div className="flex min-w-0 flex-1 items-center rounded-lg border border-emerald-300 bg-emerald-50">
-        <span className="shrink-0 px-2 text-xs font-medium text-emerald-700">
-          $
-        </span>
+  switch (fieldDef.type) {
+    case "ENUM":
+      return (
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className="min-w-0 flex-1 rounded-r-lg border-0 bg-emerald-50 px-1 py-2 text-sm text-emerald-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
-          <option value="">Select parameter...</option>
-          {parameters.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.key} ({p.type})
+          <option value="">Select value...</option>
+          {fieldDef.enumValues?.map((v) => (
+            <option key={v} value={v}>
+              {v}
             </option>
           ))}
         </select>
-      </div>
-      <button
-        type="button"
-        onClick={onSwitchToLiteral}
-        title="Switch to literal value"
-        className="shrink-0 rounded-lg border border-gray-300 px-2 py-2 text-xs text-gray-500 hover:bg-gray-100"
-      >
-        abc
-      </button>
-    </div>
-  );
+      );
+    case "BOOLEAN":
+      return (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        >
+          <option value="">Select value...</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      );
+    case "BIG_DECIMAL":
+    case "INTEGER":
+      return (
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter number"
+          step={fieldDef.type === "BIG_DECIMAL" ? "any" : "1"}
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      );
+    case "STRING":
+    case "LIST_STRING":
+    default:
+      return (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter value"
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      );
+  }
 }
