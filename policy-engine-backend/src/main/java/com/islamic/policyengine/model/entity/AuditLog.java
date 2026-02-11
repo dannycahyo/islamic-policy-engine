@@ -1,6 +1,5 @@
 package com.islamic.policyengine.model.entity;
 
-import com.islamic.policyengine.model.enums.PolicyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,9 +22,8 @@ public class AuditLog {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "policy_type", nullable = false, length = 50)
-    private PolicyType policyType;
+    private String policyType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rule_id")

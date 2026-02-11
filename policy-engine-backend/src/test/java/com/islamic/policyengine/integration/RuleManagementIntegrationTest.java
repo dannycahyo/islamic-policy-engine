@@ -5,7 +5,6 @@ import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.ParameterDto;
 import com.islamic.policyengine.model.dto.RuleDto;
 import com.islamic.policyengine.model.entity.Rule;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.repository.RuleRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,7 +67,7 @@ class RuleManagementIntegrationTest {
 
     @Test
     void getRuleById_shouldReturnRule() throws Exception {
-        List<Rule> rules = ruleRepository.findByPolicyType(PolicyType.TRANSACTION_LIMIT);
+        List<Rule> rules = ruleRepository.findByPolicyType("TRANSACTION_LIMIT");
         assertThat(rules).isNotEmpty();
         UUID ruleId = rules.get(0).getId();
 
@@ -80,7 +79,7 @@ class RuleManagementIntegrationTest {
 
     @Test
     void updateRule_shouldIncrementVersionAndEvictCache() throws Exception {
-        List<Rule> rules = ruleRepository.findByPolicyType(PolicyType.TRANSACTION_LIMIT);
+        List<Rule> rules = ruleRepository.findByPolicyType("TRANSACTION_LIMIT");
         UUID ruleId = rules.get(0).getId();
         int originalVersion = rules.get(0).getVersion();
 
@@ -130,7 +129,7 @@ class RuleManagementIntegrationTest {
 
     @Test
     void toggleRuleStatus_shouldUpdateFlag() throws Exception {
-        List<Rule> rules = ruleRepository.findByPolicyType(PolicyType.TRANSACTION_LIMIT);
+        List<Rule> rules = ruleRepository.findByPolicyType("TRANSACTION_LIMIT");
         UUID ruleId = rules.get(0).getId();
 
         // Deactivate
@@ -150,7 +149,7 @@ class RuleManagementIntegrationTest {
 
     @Test
     void testRuleEndpoint_shouldReturnResultWithoutAudit() throws Exception {
-        List<Rule> rules = ruleRepository.findByPolicyType(PolicyType.RISK_FLAG);
+        List<Rule> rules = ruleRepository.findByPolicyType("RISK_FLAG");
         UUID ruleId = rules.get(0).getId();
 
         long auditCountBefore = ruleRepository.count(); // just a baseline

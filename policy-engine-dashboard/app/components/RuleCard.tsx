@@ -19,7 +19,7 @@ export function RuleCard({ rule }: { rule: Rule }) {
         <PolicyTypeBadge policyType={rule.policyType} />
         <span className="text-xs text-gray-400">v{rule.version}</span>
         <span className="text-xs text-gray-400">
-          {rule.parameters.length} param{rule.parameters.length !== 1 ? "s" : ""}
+          {(rule.fields ?? []).length} field{(rule.fields ?? []).length !== 1 ? "s" : ""}
         </span>
       </div>
     </Link>

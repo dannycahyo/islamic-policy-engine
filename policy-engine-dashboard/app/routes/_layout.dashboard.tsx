@@ -1,12 +1,11 @@
 import { Link, useLoaderData, isRouteErrorResponse } from "react-router";
 import type { Route } from "./+types/_layout.dashboard";
 import { getRules, getAuditLogs } from "~/lib/api";
-import { PolicyType } from "~/lib/types";
 import type { AuditLog } from "~/lib/types";
 import { PolicyTypeBadge } from "~/components/StatusBadge";
 
 interface DashboardData {
-  stats: { type: PolicyType; total: number; active: number }[];
+  stats: { type: string; total: number; active: number }[];
   recentAudit: AuditLog[];
   error?: string;
 }
@@ -19,23 +18,22 @@ export async function loader(): Promise<DashboardData> {
     ]);
 
     const rules = rulesRes.content;
-    const stats = Object.values(PolicyType).map((type) => {
-      const typeRules = rules.filter((r) => r.policyType === type);
-      return {
-        type,
-        total: typeRules.length,
-        active: typeRules.filter((r) => r.isActive).length,
-      };
-    });
+    // Derive stats dynamically from available rules
+    const typeMap = new Map<string, { total: number; active: number }>();
+    for (const rule of rules) {
+      const entry = typeMap.get(rule.policyType) ?? { total: 0, active: 0 };
+      entry.total++;
+      if (rule.isActive) entry.active++;
+      typeMap.set(rule.policyType, entry);
+    }
+    const stats = Array.from(typeMap.entries())
+      .map(([type, counts]) => ({ type, ...counts }))
+      .sort((a, b) => a.type.localeCompare(b.type));
 
     return { stats, recentAudit: auditRes.content };
   } catch {
     return {
-      stats: Object.values(PolicyType).map((type) => ({
-        type,
-        total: 0,
-        active: 0,
-      })),
+      stats: [],
       recentAudit: [],
       error: "Unable to connect to backend API. Is the server running?",
     };
@@ -74,28 +72,30 @@ export default function DashboardPage() {
       )}
 
       {/* Stats cards */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        {data.stats.map((stat) => (
-          <Link
-            key={stat.type}
-            to={`/rules?policyType=${stat.type}`}
-            className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <PolicyTypeBadge policyType={stat.type} />
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-3xl font-bold text-gray-900">
-                {stat.total}
-              </span>
-              <span className="mb-1 text-sm text-gray-500">
-                rule{stat.total !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-500">
-              {stat.active} active
-            </p>
-          </Link>
-        ))}
-      </div>
+      {data.stats.length > 0 && (
+        <div className={`mb-8 grid gap-4 sm:grid-cols-${Math.min(data.stats.length, 3)}`}>
+          {data.stats.map((stat) => (
+            <Link
+              key={stat.type}
+              to={`/rules?policyType=${stat.type}`}
+              className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <PolicyTypeBadge policyType={stat.type} />
+              <div className="mt-3 flex items-end gap-2">
+                <span className="text-3xl font-bold text-gray-900">
+                  {stat.total}
+                </span>
+                <span className="mb-1 text-sm text-gray-500">
+                  rule{stat.total !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                {stat.active} active
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Quick actions */}
       <div className="mb-8 flex gap-3">

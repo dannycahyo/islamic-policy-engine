@@ -1,6 +1,5 @@
 package com.islamic.policyengine.model.dto;
 
-import com.islamic.policyengine.model.enums.PolicyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +15,7 @@ import java.util.UUID;
 public class AuditLogDto {
 
     private UUID id;
-    private PolicyType policyType;
+    private String policyType;
     private UUID ruleId;
     private Integer ruleVersion;
     private String inputData;

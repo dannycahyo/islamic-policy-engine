@@ -1,0 +1,309 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-rule-fields-table
+      author: islamic-policy-engine
+      changes:
+        - createTable:
+            tableName: rule_fields
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_category
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enum_values
+                  type: text
+              - column:
+                  name: field_order
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: rule_fields
+            baseColumnNames: rule_id
+            referencedTableName: rules
+            referencedColumnNames: id
+            constraintName: fk_rule_fields_rule_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: rule_fields
+            columnNames: rule_id, field_name
+            constraintName: uk_rule_fields_rule_id_field_name
+
+  - changeSet:
+      id: 004-add-fact-type-name-to-rules
+      author: islamic-policy-engine
+      changes:
+        - addColumn:
+            tableName: rules
+            columns:
+              - column:
+                  name: fact_type_name
+                  type: varchar(100)
+
+  - changeSet:
+      id: 004-seed-rule-fields-transaction-limit
+      author: islamic-policy-engine
+      changes:
+        # TransactionFact INPUT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000001" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "accountTier" }
+              - column: { name: field_type, value: "ENUM" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: enum_values, value: "SILVER,GOLD,PLATINUM" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000002" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "transactionAmount" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000003" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "dailyCumulativeAmount" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        # TransactionFact RESULT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000004" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "allowed" }
+              - column: { name: field_type, value: "BOOLEAN" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000005" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "reason" }
+              - column: { name: field_type, value: "STRING" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f1000001-0000-0000-0000-000000000006" }
+              - column: { name: rule_id, value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+              - column: { name: field_name, value: "remainingLimit" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - update:
+            tableName: rules
+            columns:
+              - column: { name: fact_type_name, value: "TransactionFact" }
+            where: id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+
+  - changeSet:
+      id: 004-seed-rule-fields-financing-eligibility
+      author: islamic-policy-engine
+      changes:
+        # FinancingRequestFact INPUT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000001" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "age" }
+              - column: { name: field_type, value: "INTEGER" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000002" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "monthlyIncome" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000003" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "accountStatus" }
+              - column: { name: field_type, value: "ENUM" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: enum_values, value: "ACTIVE,DORMANT,CLOSED" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000004" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "requestedAmount" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 3 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        # FinancingRequestFact RESULT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000005" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "eligible" }
+              - column: { name: field_type, value: "BOOLEAN" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000006" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "reasons" }
+              - column: { name: field_type, value: "LIST_STRING" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f2000001-0000-0000-0000-000000000007" }
+              - column: { name: rule_id, value: "b2c3d4e5-f6a7-8901-bcde-f12345678901" }
+              - column: { name: field_name, value: "maxFinancingAmount" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - update:
+            tableName: rules
+            columns:
+              - column: { name: fact_type_name, value: "FinancingRequestFact" }
+            where: id = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
+
+  - changeSet:
+      id: 004-seed-rule-fields-risk-flag
+      author: islamic-policy-engine
+      changes:
+        # RiskAssessmentFact INPUT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000001" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "transactionAmount" }
+              - column: { name: field_type, value: "BIG_DECIMAL" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000002" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "destinationRegion" }
+              - column: { name: field_type, value: "STRING" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000003" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "transactionFrequency" }
+              - column: { name: field_type, value: "INTEGER" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000004" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "isNewBeneficiary" }
+              - column: { name: field_type, value: "BOOLEAN" }
+              - column: { name: field_category, value: "INPUT" }
+              - column: { name: field_order, valueNumeric: 3 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        # RiskAssessmentFact RESULT fields
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000005" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "flagged" }
+              - column: { name: field_type, value: "BOOLEAN" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 0 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000006" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "riskScore" }
+              - column: { name: field_type, value: "INTEGER" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 1 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - insert:
+            tableName: rule_fields
+            columns:
+              - column: { name: id, value: "f3000001-0000-0000-0000-000000000007" }
+              - column: { name: rule_id, value: "c3d4e5f6-a7b8-9012-cdef-123456789012" }
+              - column: { name: field_name, value: "flags" }
+              - column: { name: field_type, value: "LIST_STRING" }
+              - column: { name: field_category, value: "RESULT" }
+              - column: { name: field_order, valueNumeric: 2 }
+              - column: { name: created_at, valueDate: "2026-02-08T00:00:00" }
+        - update:
+            tableName: rules
+            columns:
+              - column: { name: fact_type_name, value: "RiskAssessmentFact" }
+            where: id = 'c3d4e5f6-a7b8-9012-cdef-123456789012'

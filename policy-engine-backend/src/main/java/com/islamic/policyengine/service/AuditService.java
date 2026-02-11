@@ -6,7 +6,6 @@ import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
 import com.islamic.policyengine.model.entity.AuditLog;
 import com.islamic.policyengine.model.entity.Rule;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,7 @@ public class AuditService {
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
-    public void log(PolicyType policyType, Rule rule, EvaluationRequest request,
+    public void log(String policyType, Rule rule, EvaluationRequest request,
                     EvaluationResponse response, long evaluationMs) {
         try {
             AuditLog auditLog = AuditLog.builder()

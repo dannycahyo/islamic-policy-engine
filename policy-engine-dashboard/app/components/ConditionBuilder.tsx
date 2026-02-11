@@ -1,13 +1,18 @@
 import { useReducer, useEffect, useCallback, useRef } from "react";
 import { useFetcher } from "react-router";
 import type {
-  FactMetadata,
+  RuleField,
   ConditionRow,
   ActionRow,
   RuleDefinition,
-  FieldDefinition,
 } from "~/lib/types";
+import { OPERATORS } from "~/lib/types";
 import { DrlEditor } from "./DrlEditor";
+
+interface FieldDef {
+  type: string;
+  enumValues?: string[];
+}
 
 // State
 
@@ -125,21 +130,34 @@ function builderReducer(
 
 // Component
 
+function fieldsToMap(fields: RuleField[]): Record<string, FieldDef> {
+  const map: Record<string, FieldDef> = {};
+  for (const f of fields) {
+    map[f.fieldName] = {
+      type: f.fieldType,
+      enumValues: f.enumValues,
+    };
+  }
+  return map;
+}
+
 export function ConditionBuilder({
-  metadata,
+  inputFields: inputFieldsArr,
+  resultFields: resultFieldsArr,
   ruleName,
   policyType,
-  initialFactType,
+  factType,
   onDrlChange,
 }: {
-  metadata: FactMetadata;
+  inputFields: RuleField[];
+  resultFields: RuleField[];
   ruleName: string;
   policyType: string;
-  initialFactType: string;
+  factType: string;
   onDrlChange?: (drl: string) => void;
 }) {
   const [state, dispatch] = useReducer(builderReducer, {
-    factType: initialFactType,
+    factType,
     conditions: [],
     actions: [],
     generatedDrl: "",
@@ -154,12 +172,12 @@ export function ConditionBuilder({
   const onDrlChangeRef = useRef(onDrlChange);
   onDrlChangeRef.current = onDrlChange;
 
-  // Reset when fact type changes from outside (policy type change)
+  // Reset when fact type changes from outside
   useEffect(() => {
-    if (initialFactType && initialFactType !== state.factType) {
-      dispatch({ type: "RESET", factType: initialFactType });
+    if (factType && factType !== state.factType) {
+      dispatch({ type: "RESET", factType });
     }
-  }, [initialFactType]);
+  }, [factType]);
 
   // Handle fetcher response
   useEffect(() => {
@@ -173,9 +191,8 @@ export function ConditionBuilder({
     }
   }, [fetcher.data]);
 
-  const factDef = metadata.facts[state.factType];
-  const inputFields = factDef?.inputFields ?? {};
-  const resultFields = factDef?.resultFields ?? {};
+  const inputFields = fieldsToMap(inputFieldsArr);
+  const resultFields = fieldsToMap(resultFieldsArr);
 
   // Generate DRL preview (debounced)
   const generatePreview = useCallback(() => {
@@ -205,6 +222,8 @@ export function ConditionBuilder({
       actions: state.actions
         .filter((a) => a.field && a.value)
         .map(({ field, value, valueType }) => ({ field, value, valueType })),
+      inputFields: inputFieldsArr,
+      resultFields: resultFieldsArr,
     };
 
     dispatch({ type: "SET_DRL_LOADING", loading: true });
@@ -221,6 +240,8 @@ export function ConditionBuilder({
     state.factType,
     ruleName,
     policyType,
+    inputFieldsArr,
+    resultFieldsArr,
   ]);
 
   useEffect(() => {
@@ -234,13 +255,13 @@ export function ConditionBuilder({
   function getOperatorsForField(fieldName: string): string[] {
     const fieldDef = inputFields[fieldName];
     if (!fieldDef) return [];
-    return metadata.operators[fieldDef.type] ?? [];
+    return OPERATORS[fieldDef.type] ?? [];
   }
 
   function handleConditionFieldChange(id: string, newField: string) {
     const fieldDef = inputFields[newField];
     const valueType = fieldDef?.type ?? "";
-    const operators = metadata.operators[valueType] ?? [];
+    const ops = OPERATORS[valueType] ?? [];
     dispatch({
       type: "UPDATE_CONDITION",
       id,
@@ -257,7 +278,7 @@ export function ConditionBuilder({
       type: "UPDATE_CONDITION",
       id,
       field: "operator",
-      value: operators[0] ?? "",
+      value: ops[0] ?? "",
     });
     dispatch({ type: "UPDATE_CONDITION", id, field: "value", value: "" });
   }
@@ -420,7 +441,7 @@ function ConditionRowUI({
 }: {
   condition: ConditionRow;
   index: number;
-  inputFields: Record<string, FieldDefinition>;
+  inputFields: Record<string, FieldDef>;
   operators: string[];
   onFieldChange: (field: string) => void;
   onOperatorChange: (op: string) => void;
@@ -506,7 +527,7 @@ function ActionRowUI({
 }: {
   action: ActionRow;
   index: number;
-  resultFields: Record<string, FieldDefinition>;
+  resultFields: Record<string, FieldDef>;
   onFieldChange: (field: string) => void;
   onValueChange: (val: string) => void;
   onRemove: () => void;
@@ -573,7 +594,7 @@ function ValueInput({
   onChange,
   disabled,
 }: {
-  fieldDef: FieldDefinition | null;
+  fieldDef: FieldDef | null;
   value: string;
   onChange: (val: string) => void;
   disabled: boolean;

@@ -4,9 +4,10 @@ import com.islamic.policyengine.exception.DrlCompilationException;
 import com.islamic.policyengine.exception.PolicyNotFoundException;
 import com.islamic.policyengine.model.dto.ParameterDto;
 import com.islamic.policyengine.model.dto.RuleDto;
+import com.islamic.policyengine.model.dto.RuleFieldDTO;
 import com.islamic.policyengine.model.entity.Rule;
+import com.islamic.policyengine.model.entity.RuleField;
 import com.islamic.policyengine.model.entity.RuleParameter;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,7 +32,7 @@ public class RuleManagementService {
     private final DroolsEngineService droolsEngineService;
     private final EntityManager entityManager;
 
-    public Page<RuleDto> getRules(PolicyType policyType, Boolean isActive, int page, int size) {
+    public Page<RuleDto> getRules(String policyType, Boolean isActive, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
 
         Page<Rule> rules;
@@ -48,7 +50,7 @@ public class RuleManagementService {
     }
 
     public RuleDto getRuleById(UUID id) {
-        Rule rule = ruleRepository.findById(id)
+        Rule rule = ruleRepository.findWithParametersById(id)
                 .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + id));
         return toDtoWithDrl(rule);
     }
@@ -66,10 +68,12 @@ public class RuleManagementService {
                 .description(ruleDto.getDescription())
                 .policyType(ruleDto.getPolicyType())
                 .drlSource(ruleDto.getDrlSource())
+                .factTypeName(ruleDto.getFactTypeName())
                 .isActive(ruleDto.getIsActive() != null ? ruleDto.getIsActive() : true)
                 .version(1)
                 .build();
 
+        // Add parameters
         if (ruleDto.getParameters() != null) {
             for (ParameterDto paramDto : ruleDto.getParameters()) {
                 RuleParameter param = RuleParameter.builder()
@@ -83,13 +87,29 @@ public class RuleManagementService {
             }
         }
 
+        // Add field definitions
+        if (ruleDto.getFields() != null) {
+            for (RuleFieldDTO fieldDto : ruleDto.getFields()) {
+                RuleField field = RuleField.builder()
+                        .rule(rule)
+                        .fieldName(fieldDto.getFieldName())
+                        .fieldType(fieldDto.getFieldType())
+                        .fieldCategory(fieldDto.getFieldCategory())
+                        .enumValues(fieldDto.getEnumValues() != null
+                                ? String.join(",", fieldDto.getEnumValues()) : null)
+                        .fieldOrder(fieldDto.getFieldOrder() != null ? fieldDto.getFieldOrder() : 0)
+                        .build();
+                rule.getFields().add(field);
+            }
+        }
+
         Rule saved = ruleRepository.save(rule);
         return toDtoWithDrl(saved);
     }
 
     @Transactional
     public RuleDto updateRule(UUID id, RuleDto ruleDto) {
-        Rule rule = ruleRepository.findById(id)
+        Rule rule = ruleRepository.findWithParametersById(id)
                 .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + id));
 
         // Validate DRL if provided
@@ -109,6 +129,9 @@ public class RuleManagementService {
         if (ruleDto.getDescription() != null) {
             rule.setDescription(ruleDto.getDescription());
         }
+        if (ruleDto.getFactTypeName() != null) {
+            rule.setFactTypeName(ruleDto.getFactTypeName());
+        }
 
         // Update parameters
         if (ruleDto.getParameters() != null) {
@@ -123,6 +146,24 @@ public class RuleManagementService {
                         .description(paramDto.getDescription())
                         .build();
                 rule.getParameters().add(param);
+            }
+        }
+
+        // Update field definitions
+        if (ruleDto.getFields() != null) {
+            rule.getFields().clear();
+            entityManager.flush();
+            for (RuleFieldDTO fieldDto : ruleDto.getFields()) {
+                RuleField field = RuleField.builder()
+                        .rule(rule)
+                        .fieldName(fieldDto.getFieldName())
+                        .fieldType(fieldDto.getFieldType())
+                        .fieldCategory(fieldDto.getFieldCategory())
+                        .enumValues(fieldDto.getEnumValues() != null
+                                ? String.join(",", fieldDto.getEnumValues()) : null)
+                        .fieldOrder(fieldDto.getFieldOrder() != null ? fieldDto.getFieldOrder() : 0)
+                        .build();
+                rule.getFields().add(field);
             }
         }
 
@@ -153,6 +194,7 @@ public class RuleManagementService {
                 .policyType(rule.getPolicyType())
                 .isActive(rule.getIsActive())
                 .version(rule.getVersion())
+                .factTypeName(rule.getFactTypeName())
                 .parameters(rule.getParameters().stream()
                         .map(p -> ParameterDto.builder()
                                 .key(p.getParamKey())
@@ -160,6 +202,9 @@ public class RuleManagementService {
                                 .type(p.getParamType())
                                 .description(p.getDescription())
                                 .build())
+                        .collect(Collectors.toList()))
+                .fields(rule.getFields().stream()
+                        .map(this::toFieldDto)
                         .collect(Collectors.toList()))
                 .updatedAt(rule.getUpdatedAt())
                 .build();
@@ -170,5 +215,16 @@ public class RuleManagementService {
         dto.setDrlSource(rule.getDrlSource());
         dto.setDescription(rule.getDescription());
         return dto;
+    }
+
+    private RuleFieldDTO toFieldDto(RuleField field) {
+        return RuleFieldDTO.builder()
+                .fieldName(field.getFieldName())
+                .fieldType(field.getFieldType())
+                .fieldCategory(field.getFieldCategory())
+                .enumValues(field.getEnumValues() != null
+                        ? Arrays.asList(field.getEnumValues().split(",")) : null)
+                .fieldOrder(field.getFieldOrder())
+                .build();
     }
 }

@@ -2,7 +2,6 @@ package com.islamic.policyengine.controller;
 
 import com.islamic.policyengine.model.dto.AuditLogDto;
 import com.islamic.policyengine.model.entity.AuditLog;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,7 +24,7 @@ public class AuditController {
 
     @GetMapping
     public ResponseEntity<Page<AuditLogDto>> getAuditLogs(
-            @RequestParam(required = false) PolicyType policyType,
+            @RequestParam(required = false) String policyType,
             @RequestParam(required = false) UUID ruleId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo,

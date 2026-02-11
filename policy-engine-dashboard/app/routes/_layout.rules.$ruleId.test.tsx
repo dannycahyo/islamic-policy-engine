@@ -67,7 +67,7 @@ export default function RuleTestPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Test Rule</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Dry-run test for "{rule.name}" — no audit record will be written
+          Dry-run test for &quot;{rule.name}&quot; — no audit record will be written
         </p>
         <div className="mt-2 flex items-center gap-3">
           <PolicyTypeBadge policyType={rule.policyType} />
@@ -77,7 +77,7 @@ export default function RuleTestPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <TestRunner ruleId={rule.id} policyType={rule.policyType} />
+        <TestRunner ruleId={rule.id} fields={rule.fields ?? []} />
       </div>
     </div>
   );

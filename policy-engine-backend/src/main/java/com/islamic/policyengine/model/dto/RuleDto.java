@@ -1,6 +1,5 @@
 package com.islamic.policyengine.model.dto;
 
-import com.islamic.policyengine.model.enums.PolicyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,10 +18,12 @@ public class RuleDto {
     private UUID id;
     private String name;
     private String description;
-    private PolicyType policyType;
+    private String policyType;
     private String drlSource;
     private Boolean isActive;
     private Integer version;
+    private String factTypeName;
     private List<ParameterDto> parameters;
+    private List<RuleFieldDTO> fields;
     private LocalDateTime updatedAt;
 }

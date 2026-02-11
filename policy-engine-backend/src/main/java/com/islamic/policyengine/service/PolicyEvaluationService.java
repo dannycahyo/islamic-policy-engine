@@ -1,23 +1,21 @@
 package com.islamic.policyengine.service;
 
 import com.islamic.policyengine.exception.PolicyNotFoundException;
-import com.islamic.policyengine.model.annotation.InputField;
-import com.islamic.policyengine.model.annotation.ResultField;
 import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
 import com.islamic.policyengine.model.entity.Rule;
+import com.islamic.policyengine.model.entity.RuleField;
 import com.islamic.policyengine.model.entity.RuleParameter;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kie.api.KieBase;
+import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.KieSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,39 +27,79 @@ import java.util.concurrent.*;
 public class PolicyEvaluationService {
 
     private static final long EVALUATION_TIMEOUT_MS = 5000;
+    private static final String RULES_PACKAGE = "com.islamic.policyengine.rules";
 
     private final DroolsEngineService droolsEngineService;
     private final RuleRepository ruleRepository;
     private final AuditService auditService;
-    private final FactMetadataService factMetadataService;
 
     private final ExecutorService ruleExecutor = Executors.newCachedThreadPool();
 
-    public EvaluationResponse evaluate(PolicyType policyType, EvaluationRequest request) {
+    public EvaluationResponse evaluate(String policyType, EvaluationRequest request) {
         List<Rule> rules = ruleRepository.findByPolicyTypeAndIsActiveTrue(policyType);
         if (rules.isEmpty()) {
-            throw new PolicyNotFoundException(policyType);
+            throw new PolicyNotFoundException("No active rule found for policy type: " + policyType);
         }
         Rule rule = rules.get(0);
 
-        return evaluateWithRule(rule, policyType, request, true);
+        return evaluateWithRule(rule, request, true);
+    }
+
+    public EvaluationResponse evaluateRuleById(UUID ruleId, EvaluationRequest request) {
+        Rule rule = ruleRepository.findWithParametersById(ruleId)
+                .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + ruleId));
+        return evaluateWithRule(rule, request, true);
     }
 
     public EvaluationResponse testRuleById(UUID ruleId, EvaluationRequest request) {
         Rule rule = ruleRepository.findWithParametersById(ruleId)
                 .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + ruleId));
-        return evaluateWithRule(rule, rule.getPolicyType(), request, false);
+        return evaluateWithRule(rule, request, false);
     }
 
-    public EvaluationResponse evaluateWithRule(Rule rule, PolicyType policyType,
-                                                EvaluationRequest request, boolean writeAudit) {
+    public EvaluationResponse evaluateWithRule(Rule rule, EvaluationRequest request, boolean writeAudit) {
         KieBase kieBase = droolsEngineService.compileRule(rule);
         KieSession session = kieBase.newKieSession();
 
         try {
-            setGlobals(session, rule.getParameters(), policyType);
+            // Set globals for backward compatibility with old rules that use parameters
+            setGlobals(session, rule.getParameters());
 
-            Object fact = mapToFact(policyType, request);
+            String factTypeName = rule.getFactTypeName();
+            Map<String, Object> data = request.getData();
+            Object fact;
+
+            // Determine if this rule uses dynamic declared types or legacy Java fact classes
+            FactType declaredFactType = (factTypeName != null)
+                    ? kieBase.getFactType(RULES_PACKAGE, factTypeName)
+                    : null;
+
+            List<RuleField> resultFieldDefs;
+
+            if (declaredFactType != null) {
+                // Dynamic evaluation using Drools declared types
+                fact = declaredFactType.newInstance();
+
+                // Set input field values
+                for (RuleField field : rule.getFields()) {
+                    if ("INPUT".equals(field.getFieldCategory())) {
+                        Object rawValue = data.get(field.getFieldName());
+                        if (rawValue != null) {
+                            Object converted = convertForFieldType(rawValue, field.getFieldType());
+                            declaredFactType.set(fact, field.getFieldName(), converted);
+                        }
+                    }
+                }
+
+                resultFieldDefs = rule.getFields().stream()
+                        .filter(f -> "RESULT".equals(f.getFieldCategory()))
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                // Legacy evaluation path: use FactMetadataService reflection (backward compat)
+                throw new RuntimeException("Rule '" + rule.getName() + "' has no factTypeName and no declared type. "
+                        + "Legacy Java fact class evaluation is no longer supported for rules without field definitions.");
+            }
+
             session.insert(fact);
 
             long start = System.nanoTime();
@@ -84,10 +122,15 @@ public class PolicyEvaluationService {
 
             long durationMs = (System.nanoTime() - start) / 1_000_000;
 
-            Object result = mapToResult(fact);
+            // Extract result fields
+            Map<String, Object> result = new HashMap<>();
+            for (RuleField field : resultFieldDefs) {
+                Object value = declaredFactType.get(fact, field.getFieldName());
+                result.put(field.getFieldName(), value);
+            }
 
             EvaluationResponse response = EvaluationResponse.builder()
-                    .policyType(policyType)
+                    .policyType(rule.getPolicyType())
                     .ruleId(rule.getId())
                     .ruleVersion(rule.getVersion())
                     .result(result)
@@ -96,19 +139,25 @@ public class PolicyEvaluationService {
                     .build();
 
             if (writeAudit) {
-                auditService.log(policyType, rule, request, response, durationMs);
+                auditService.log(rule.getPolicyType(), rule, request, response, durationMs);
             }
 
             return response;
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to create declared fact instance for rule: " + rule.getName(), e);
         } finally {
             session.dispose();
         }
     }
 
-    private void setGlobals(KieSession session, List<RuleParameter> parameters, PolicyType policyType) {
+    private void setGlobals(KieSession session, List<RuleParameter> parameters) {
         for (RuleParameter param : parameters) {
             Object value = castParameterValue(param);
-            session.setGlobal(param.getParamKey(), value);
+            try {
+                session.setGlobal(param.getParamKey(), value);
+            } catch (RuntimeException e) {
+                log.debug("Could not set global '{}': {}", param.getParamKey(), e.getMessage());
+            }
         }
     }
 
@@ -125,126 +174,33 @@ public class PolicyEvaluationService {
                 return value;
             case "BOOLEAN":
                 return Boolean.parseBoolean(value);
-            case "LIST":
-                return value;
             default:
                 return value;
         }
     }
 
-    /**
-     * Creates a fact instance using reflection: instantiates the fact class for the given
-     * policy type, then populates all @InputField-annotated fields from the request data.
-     */
-    private Object mapToFact(PolicyType policyType, EvaluationRequest request) {
-        Class<?> factClass = factMetadataService.getFactClassForPolicyType(policyType);
-        if (factClass == null) {
-            throw new IllegalArgumentException("Unsupported policy type: " + policyType);
-        }
-
-        Map<String, Object> data = request.getData();
-
-        try {
-            Object fact = factClass.getDeclaredConstructor().newInstance();
-
-            for (Field field : factClass.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(InputField.class)) {
-                    continue;
-                }
-
-                String fieldName = field.getName();
-                Object rawValue = data.get(fieldName);
-
-                if (rawValue == null) {
-                    continue;
-                }
-
-                field.setAccessible(true);
-                Object converted = convertValue(rawValue, field.getType());
-                field.set(fact, converted);
-            }
-
-            // Initialize result fields with sensible defaults
-            for (Field field : factClass.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(ResultField.class)) {
-                    continue;
-                }
-                field.setAccessible(true);
-                Object currentValue = field.get(fact);
-
-                if (currentValue == null && List.class.isAssignableFrom(field.getType())) {
-                    field.set(fact, new ArrayList<>());
-                }
-                if (currentValue == null && field.getType() == Boolean.class) {
-                    field.set(fact, false);
-                }
-                if (currentValue == null && field.getType() == Integer.class) {
-                    field.set(fact, 0);
-                }
-            }
-
-            return fact;
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException("Failed to create fact instance for " + factClass.getSimpleName(), e);
-        }
-    }
-
-    /**
-     * Reads all @ResultField-annotated fields from the fact instance into a Map.
-     */
-    private Object mapToResult(Object fact) {
-        Map<String, Object> result = new HashMap<>();
-
-        for (Field field : fact.getClass().getDeclaredFields()) {
-            if (!field.isAnnotationPresent(ResultField.class)) {
-                continue;
-            }
-            try {
-                field.setAccessible(true);
-                result.put(field.getName(), field.get(fact));
-            } catch (IllegalAccessException e) {
-                log.warn("Failed to read result field: {}", field.getName(), e);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Converts a raw value (from JSON deserialization) to the target Java type.
-     */
-    @SuppressWarnings("unchecked")
-    private Object convertValue(Object rawValue, Class<?> targetType) {
+    private Object convertForFieldType(Object rawValue, String fieldType) {
         if (rawValue == null) return null;
-
         String strValue = String.valueOf(rawValue);
 
-        if (targetType == BigDecimal.class) {
-            return new BigDecimal(strValue);
+        switch (fieldType) {
+            case "BIG_DECIMAL":
+                return new BigDecimal(strValue);
+            case "INTEGER":
+                if (rawValue instanceof Integer) return rawValue;
+                if (rawValue instanceof Number) return ((Number) rawValue).intValue();
+                return Integer.parseInt(strValue);
+            case "BOOLEAN":
+                if (rawValue instanceof Boolean) return rawValue;
+                return Boolean.parseBoolean(strValue);
+            case "STRING":
+            case "ENUM":
+                return strValue;
+            case "LIST_STRING":
+                if (rawValue instanceof List) return rawValue;
+                return new ArrayList<>(Arrays.asList(strValue.split(",")));
+            default:
+                return strValue;
         }
-        if (targetType == Integer.class || targetType == int.class) {
-            if (rawValue instanceof Integer) return rawValue;
-            return Integer.parseInt(strValue);
-        }
-        if (targetType == Long.class || targetType == long.class) {
-            if (rawValue instanceof Long) return rawValue;
-            return Long.parseLong(strValue);
-        }
-        if (targetType == Double.class || targetType == double.class) {
-            if (rawValue instanceof Double) return rawValue;
-            return Double.parseDouble(strValue);
-        }
-        if (targetType == Boolean.class || targetType == boolean.class) {
-            if (rawValue instanceof Boolean) return rawValue;
-            return Boolean.parseBoolean(strValue);
-        }
-        if (targetType == String.class) {
-            return strValue;
-        }
-        if (targetType.isEnum()) {
-            return Enum.valueOf((Class<Enum>) targetType, strValue);
-        }
-
-        return rawValue;
     }
 }

@@ -1,6 +1,5 @@
 package com.islamic.policyengine.model.entity;
 
-import com.islamic.policyengine.model.enums.PolicyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,9 +30,8 @@ public class Rule {
     @Column(columnDefinition = "text")
     private String description;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "policy_type", nullable = false, length = 50)
-    private PolicyType policyType;
+    private String policyType;
 
     @Column(name = "drl_source", nullable = false, columnDefinition = "text")
     private String drlSource;
@@ -46,6 +44,9 @@ public class Rule {
     @Builder.Default
     private Integer version = 1;
 
+    @Column(name = "fact_type_name", length = 100)
+    private String factTypeName;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -55,6 +56,11 @@ public class Rule {
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<RuleParameter> parameters = new ArrayList<>();
+
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("fieldOrder ASC")
+    @Builder.Default
+    private List<RuleField> fields = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

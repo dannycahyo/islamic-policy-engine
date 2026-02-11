@@ -6,18 +6,19 @@ import {
 } from "react-router";
 import type { Route } from "./+types/_layout.rules";
 import { getRules } from "~/lib/api";
-import { PolicyType, POLICY_TYPE_LABELS } from "~/lib/types";
+import { POLICY_TYPE_LABELS } from "~/lib/types";
 import type { Rule, PaginatedResponse } from "~/lib/types";
 import { RuleCard } from "~/components/RuleCard";
 
 interface RulesData {
   rules: PaginatedResponse<Rule>;
+  policyTypes: string[];
   error?: string;
 }
 
 export async function loader({ request }: Route.LoaderArgs): Promise<RulesData> {
   const url = new URL(request.url);
-  const policyType = url.searchParams.get("policyType") as PolicyType | null;
+  const policyType = url.searchParams.get("policyType");
   const page = Number(url.searchParams.get("page") || "0");
 
   try {
@@ -26,10 +27,15 @@ export async function loader({ request }: Route.LoaderArgs): Promise<RulesData> 
       page,
       size: 20,
     });
-    return { rules };
+    // Derive unique policy types from available rules
+    const policyTypes = Array.from(
+      new Set(rules.content.map((r) => r.policyType))
+    ).sort();
+    return { rules, policyTypes };
   } catch {
     return {
       rules: { content: [], totalElements: 0, totalPages: 0, number: 0 },
+      policyTypes: [],
       error: "Unable to load rules. Is the backend running?",
     };
   }
@@ -95,9 +101,9 @@ export default function RulesPage() {
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           <option value="">All Policy Types</option>
-          {Object.values(PolicyType).map((type) => (
+          {data.policyTypes.map((type) => (
             <option key={type} value={type}>
-              {POLICY_TYPE_LABELS[type]}
+              {POLICY_TYPE_LABELS[type] || type}
             </option>
           ))}
         </select>
