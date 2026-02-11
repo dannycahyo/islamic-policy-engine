@@ -4,12 +4,13 @@ import {
   useActionData,
   useNavigation,
   useOutletContext,
+  useFetcher,
   Form,
   isRouteErrorResponse,
 } from "react-router";
 import { useReducer, useEffect } from "react";
 import type { Route } from "./+types/_layout.rules.$ruleId.drl";
-import { getRule, updateRule, getFactMetadata, validateDrl } from "~/lib/api";
+import { getRule, updateRule, getFactMetadata } from "~/lib/api";
 import type { Rule, FactMetadata } from "~/lib/types";
 import { POLICY_TYPE_TO_FACT } from "~/lib/types";
 import { DrlEditor } from "~/components/DrlEditor";
@@ -122,6 +123,8 @@ export default function DrlEditorPage() {
     validating: false,
   });
 
+  const validateFetcher = useFetcher<{ valid: boolean; errors: string[] }>();
+
   useEffect(() => {
     if (actionData?.success) {
       dispatch({
@@ -136,21 +139,10 @@ export default function DrlEditorPage() {
     }
   }, [actionData, dispatch]);
 
-  const factType =
-    POLICY_TYPE_TO_FACT[rule.policyType] ?? "TransactionFact";
-
-  async function handleValidate() {
-    if (!state.drlSource.trim()) {
-      drlDispatch({
-        type: "SET_VALIDATION_ERROR",
-        error: "DRL source cannot be empty",
-      });
-      return;
-    }
-    drlDispatch({ type: "SET_VALIDATING", value: true });
-    try {
-      const result = await validateDrl(state.drlSource);
-      if (result.valid) {
+  // Handle validate fetcher response
+  useEffect(() => {
+    if (validateFetcher.data) {
+      if (validateFetcher.data.valid) {
         drlDispatch({ type: "SET_VALIDATION_ERROR", error: null });
         dispatch({
           type: "ADD_TOAST",
@@ -159,16 +151,30 @@ export default function DrlEditorPage() {
       } else {
         drlDispatch({
           type: "SET_VALIDATION_ERROR",
-          error: result.errors.join("; "),
+          error: validateFetcher.data.errors.join("; "),
         });
       }
-    } catch (err) {
+      drlDispatch({ type: "SET_VALIDATING", value: false });
+    }
+  }, [validateFetcher.data, dispatch]);
+
+  const factType =
+    POLICY_TYPE_TO_FACT[rule.policyType] ?? "TransactionFact";
+
+  function handleValidate() {
+    if (!state.drlSource.trim()) {
       drlDispatch({
         type: "SET_VALIDATION_ERROR",
-        error:
-          err instanceof Error ? err.message : "Validation request failed",
+        error: "DRL source cannot be empty",
       });
+      return;
     }
+    drlDispatch({ type: "SET_VALIDATING", value: true });
+    validateFetcher.submit(JSON.stringify({ drlSource: state.drlSource }), {
+      method: "POST",
+      action: "/api/validate-drl",
+      encType: "application/json",
+    });
   }
 
   return (

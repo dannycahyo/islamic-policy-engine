@@ -6,11 +6,12 @@ import {
   useNavigation,
   useOutletContext,
   useLoaderData,
+  useFetcher,
   isRouteErrorResponse,
 } from "react-router";
 import { useReducer, useEffect, useRef } from "react";
 import type { Route } from "./+types/_layout.rules.new";
-import { createRule, getFactMetadata, validateDrl } from "~/lib/api";
+import { createRule, getFactMetadata } from "~/lib/api";
 import {
   PolicyType,
   POLICY_TYPE_LABELS,
@@ -135,6 +136,7 @@ export default function NewRulePage() {
   });
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const validateFetcher = useFetcher<{ valid: boolean; errors: string[] }>();
 
   useEffect(() => {
     if (actionData && !actionData.success) {
@@ -145,20 +147,10 @@ export default function NewRulePage() {
     }
   }, [actionData, dispatch]);
 
-  const factType = POLICY_TYPE_TO_FACT[state.policyType] ?? "TransactionFact";
-
-  async function handleValidate() {
-    if (!state.drlSource.trim()) {
-      formDispatch({
-        type: "SET_VALIDATION_ERRORS",
-        errors: ["No DRL generated yet. Add conditions and actions first."],
-      });
-      return;
-    }
-    formDispatch({ type: "SET_VALIDATING", value: true });
-    try {
-      const result = await validateDrl(state.drlSource);
-      if (result.valid) {
+  // Handle validate fetcher response
+  useEffect(() => {
+    if (validateFetcher.data) {
+      if (validateFetcher.data.valid) {
         dispatch({
           type: "ADD_TOAST",
           payload: { message: "DRL validation passed", type: "success" },
@@ -167,17 +159,29 @@ export default function NewRulePage() {
       } else {
         formDispatch({
           type: "SET_VALIDATION_ERRORS",
-          errors: result.errors,
+          errors: validateFetcher.data.errors,
         });
       }
-    } catch (err) {
+      formDispatch({ type: "SET_VALIDATING", value: false });
+    }
+  }, [validateFetcher.data, dispatch]);
+
+  const factType = POLICY_TYPE_TO_FACT[state.policyType] ?? "TransactionFact";
+
+  function handleValidate() {
+    if (!state.drlSource.trim()) {
       formDispatch({
         type: "SET_VALIDATION_ERRORS",
-        errors: [
-          err instanceof Error ? err.message : "Validation request failed",
-        ],
+        errors: ["No DRL generated yet. Add conditions and actions first."],
       });
+      return;
     }
+    formDispatch({ type: "SET_VALIDATING", value: true });
+    validateFetcher.submit(JSON.stringify({ drlSource: state.drlSource }), {
+      method: "POST",
+      action: "/api/validate-drl",
+      encType: "application/json",
+    });
   }
 
   return (
