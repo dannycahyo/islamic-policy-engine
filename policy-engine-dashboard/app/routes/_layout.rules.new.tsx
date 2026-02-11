@@ -8,7 +8,7 @@ import {
   useLoaderData,
   isRouteErrorResponse,
 } from "react-router";
-import { useReducer, useEffect, useRef } from "react";
+import { useReducer, useEffect, useRef, useCallback } from "react";
 import type { Route } from "./+types/_layout.rules.new";
 import { createRule, getFactMetadata, validateDrl } from "~/lib/api";
 import {
@@ -31,6 +31,7 @@ interface FormState {
   ruleName: string;
   validating: boolean;
   validationErrors: string[];
+  parameters: RuleParameter[];
 }
 
 type FormAction =
@@ -38,7 +39,8 @@ type FormAction =
   | { type: "SET_POLICY_TYPE"; value: PolicyType }
   | { type: "SET_RULE_NAME"; value: string }
   | { type: "SET_VALIDATING"; value: boolean }
-  | { type: "SET_VALIDATION_ERRORS"; errors: string[] };
+  | { type: "SET_VALIDATION_ERRORS"; errors: string[] }
+  | { type: "SET_PARAMETERS"; parameters: RuleParameter[] };
 
 function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
@@ -52,6 +54,8 @@ function formReducer(state: FormState, action: FormAction): FormState {
       return { ...state, validating: action.value };
     case "SET_VALIDATION_ERRORS":
       return { ...state, validationErrors: action.errors, validating: false };
+    case "SET_PARAMETERS":
+      return { ...state, parameters: action.parameters };
     default:
       return state;
   }
@@ -132,7 +136,15 @@ export default function NewRulePage() {
     ruleName: "",
     validating: false,
     validationErrors: [],
+    parameters: [],
   });
+
+  const handleParametersChange = useCallback(
+    (parameters: RuleParameter[]) => {
+      formDispatch({ type: "SET_PARAMETERS", parameters });
+    },
+    []
+  );
 
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -275,7 +287,11 @@ export default function NewRulePage() {
 
         {/* Parameters */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <ParameterForm initialParameters={[]} name="parameters" />
+          <ParameterForm
+            initialParameters={[]}
+            name="parameters"
+            onParametersChange={handleParametersChange}
+          />
         </div>
 
         {/* Visual Rule Builder */}
@@ -285,6 +301,7 @@ export default function NewRulePage() {
           ruleName={state.ruleName || "New Rule"}
           policyType={state.policyType}
           initialFactType={factType}
+          parameters={state.parameters}
           onDrlChange={(drl) =>
             formDispatch({ type: "SET_DRL", value: drl })
           }

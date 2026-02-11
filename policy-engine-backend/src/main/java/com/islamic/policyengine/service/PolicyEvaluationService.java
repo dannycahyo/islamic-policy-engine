@@ -122,6 +122,7 @@ public class PolicyEvaluationService {
 
         switch (type) {
             case "DECIMAL":
+            case "DOUBLE":
                 return new BigDecimal(value);
             case "INTEGER":
                 return Integer.parseInt(value);

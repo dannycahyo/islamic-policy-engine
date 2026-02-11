@@ -18,4 +18,13 @@ public class RuleDefinitionDTO {
     private String factType;
     private List<ConditionDTO> conditions;
     private List<ActionDTO> actions;
+    private List<ParameterInfo> parameters;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ParameterInfo {
+        private String key;
+        private String type; // STRING, INTEGER, DOUBLE/DECIMAL, BOOLEAN
+    }
 }

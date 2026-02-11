@@ -37,6 +37,15 @@ public class DrlGeneratorService {
         return Collections.unmodifiableMap(map);
     }
 
+    // Map parameter types to Java types for global declarations
+    private static final Map<String, String> PARAM_TYPE_TO_JAVA = Map.of(
+            "STRING", "String",
+            "INTEGER", "Integer",
+            "DOUBLE", "java.math.BigDecimal",
+            "DECIMAL", "java.math.BigDecimal",
+            "BOOLEAN", "Boolean"
+    );
+
     public String generateDrl(RuleDefinitionDTO definition) {
         StringBuilder drl = new StringBuilder();
         String factType = definition.getFactType();
@@ -76,6 +85,16 @@ public class DrlGeneratorService {
             }
         }
 
+        // Check parameters for BigDecimal needs
+        if (definition.getParameters() != null) {
+            for (RuleDefinitionDTO.ParameterInfo param : definition.getParameters()) {
+                String javaType = PARAM_TYPE_TO_JAVA.getOrDefault(param.getType().toUpperCase(), "String");
+                if (javaType.contains("BigDecimal")) {
+                    needsBigDecimal = true;
+                }
+            }
+        }
+
         // Write imports
         for (String imp : imports) {
             drl.append("import ").append(imp).append(";\n");
@@ -85,6 +104,15 @@ public class DrlGeneratorService {
         }
         if (needsBigDecimal) {
             drl.append("import java.math.BigDecimal;\n");
+        }
+
+        // Write global declarations for parameters
+        if (definition.getParameters() != null && !definition.getParameters().isEmpty()) {
+            drl.append("\n");
+            for (RuleDefinitionDTO.ParameterInfo param : definition.getParameters()) {
+                String javaType = PARAM_TYPE_TO_JAVA.getOrDefault(param.getType().toUpperCase(), "String");
+                drl.append("global ").append(javaType).append(" ").append(param.getKey()).append(";\n");
+            }
         }
 
         drl.append("\n");
@@ -164,6 +192,9 @@ public class DrlGeneratorService {
             case "BOOLEAN":
                 return value.toLowerCase();
             case "INTEGER":
+                return value;
+            case "PARAMETER":
+                // Output the parameter name directly (it's a global variable reference)
                 return value;
             default:
                 return "\"" + escapeString(value) + "\"";

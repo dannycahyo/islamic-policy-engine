@@ -255,6 +255,7 @@ export default function DrlEditorPage() {
               ruleName={rule.name}
               policyType={rule.policyType}
               initialFactType={factType}
+              parameters={rule.parameters}
               onDrlChange={(drl) =>
                 drlDispatch({ type: "SET_SOURCE", value: drl })
               }
