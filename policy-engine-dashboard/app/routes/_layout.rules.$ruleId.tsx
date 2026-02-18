@@ -251,6 +251,50 @@ export default function RuleDetailPage() {
         </div>
       )}
 
+      {/* API Integration */}
+      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">API Integration</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          External services can discover this rule&apos;s field schema and evaluate policies via these endpoints.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Schema Discovery</h3>
+            <div className="rounded-lg bg-gray-900 p-3">
+              <code className="text-sm text-green-400">
+                GET /api/v1/policies/{rule.policyType}/schema
+              </code>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Returns input/result field definitions. Callers can cache and refresh periodically.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Evaluate Policy</h3>
+            <div className="rounded-lg bg-gray-900 p-3">
+              <code className="text-sm text-green-400">
+                POST /api/v1/policies/{rule.policyType}/evaluate
+              </code>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Sample curl</h3>
+            <div className="overflow-x-auto rounded-lg bg-gray-900 p-3">
+              <pre className="text-xs text-green-400">{`# 1. Discover schema
+curl -s /api/v1/policies/${rule.policyType}/schema | jq
+
+# 2. Evaluate
+curl -X POST /api/v1/policies/${rule.policyType}/evaluate \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify({ data: Object.fromEntries(inputFields.map((f) => [f.fieldName, f.fieldType === "INTEGER" ? 0 : f.fieldType === "BIG_DECIMAL" ? 0.0 : f.fieldType === "BOOLEAN" ? false : "value"])) }, null, 2)}'`}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Metadata */}
       <div className="mt-4 text-xs text-gray-400">
         <p>Created: {new Date(rule.createdAt).toLocaleString()}</p>

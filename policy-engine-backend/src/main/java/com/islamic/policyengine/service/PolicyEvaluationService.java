@@ -3,6 +3,8 @@ package com.islamic.policyengine.service;
 import com.islamic.policyengine.exception.PolicyNotFoundException;
 import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
+import com.islamic.policyengine.model.dto.PolicySchemaDTO;
+import com.islamic.policyengine.model.dto.RuleFieldDTO;
 import com.islamic.policyengine.model.entity.Rule;
 import com.islamic.policyengine.model.entity.RuleField;
 import com.islamic.policyengine.model.entity.RuleParameter;
@@ -202,5 +204,52 @@ public class PolicyEvaluationService {
             default:
                 return strValue;
         }
+    }
+
+    public PolicySchemaDTO getSchema(String policyType) {
+        List<Rule> rules = ruleRepository.findByPolicyTypeAndIsActiveTrue(policyType);
+        if (rules.isEmpty()) {
+            throw new PolicyNotFoundException("No active rule found for policy type: " + policyType);
+        }
+        Rule rule = rules.get(0);
+        return buildSchema(rule);
+    }
+
+    public PolicySchemaDTO getSchemaByRuleId(UUID ruleId) {
+        Rule rule = ruleRepository.findWithParametersById(ruleId)
+                .orElseThrow(() -> new PolicyNotFoundException("Rule not found with id: " + ruleId));
+        return buildSchema(rule);
+    }
+
+    private PolicySchemaDTO buildSchema(Rule rule) {
+        List<RuleFieldDTO> inputFields = rule.getFields().stream()
+                .filter(f -> "INPUT".equals(f.getFieldCategory()))
+                .map(this::toFieldDto)
+                .collect(java.util.stream.Collectors.toList());
+
+        List<RuleFieldDTO> resultFields = rule.getFields().stream()
+                .filter(f -> "RESULT".equals(f.getFieldCategory()))
+                .map(this::toFieldDto)
+                .collect(java.util.stream.Collectors.toList());
+
+        return PolicySchemaDTO.builder()
+                .policyType(rule.getPolicyType())
+                .factTypeName(rule.getFactTypeName())
+                .ruleName(rule.getName())
+                .ruleVersion(rule.getVersion())
+                .inputFields(inputFields)
+                .resultFields(resultFields)
+                .build();
+    }
+
+    private RuleFieldDTO toFieldDto(RuleField field) {
+        return RuleFieldDTO.builder()
+                .fieldName(field.getFieldName())
+                .fieldType(field.getFieldType())
+                .fieldCategory(field.getFieldCategory())
+                .enumValues(field.getEnumValues() != null
+                        ? Arrays.asList(field.getEnumValues().split(",")) : null)
+                .fieldOrder(field.getFieldOrder())
+                .build();
     }
 }

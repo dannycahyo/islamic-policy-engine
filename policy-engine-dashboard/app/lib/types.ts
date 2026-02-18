@@ -121,3 +121,12 @@ export interface FactMetadata {
   operators: Record<string, string[]>;
   fieldTypes: string[];
 }
+
+export interface PolicySchema {
+  policyType: string;
+  factTypeName: string;
+  ruleName: string;
+  ruleVersion: number;
+  inputFields: RuleField[];
+  resultFields: RuleField[];
+}

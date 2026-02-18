@@ -7,6 +7,7 @@ import type {
   ErrorResponse,
   FactMetadata,
   RuleDefinition,
+  PolicySchema,
 } from "./types";
 
 const BASE_URL =
@@ -181,6 +182,14 @@ export function getAuditLogs(params?: {
 
 export function getFactMetadata(): Promise<FactMetadata> {
   return request<FactMetadata>("/api/v1/rules/metadata");
+}
+
+export function getPolicySchema(policyType: string): Promise<PolicySchema> {
+  return request<PolicySchema>(`/api/v1/policies/${policyType}/schema`);
+}
+
+export function getRuleSchema(ruleId: number | string): Promise<PolicySchema> {
+  return request<PolicySchema>(`/api/v1/rules/${ruleId}/schema`);
 }
 
 export function generateDrl(
