@@ -3,7 +3,9 @@ package com.islamic.policyengine.model.entity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -17,6 +19,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(exclude = {"parameters", "fields"})
+@ToString(exclude = {"parameters", "fields"})
 @Entity
 @Table(name = "rules")
 public class Rule {

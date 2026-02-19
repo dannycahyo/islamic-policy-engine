@@ -3,7 +3,9 @@ package com.islamic.policyengine.model.entity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -13,6 +15,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(exclude = "rule")
+@ToString(exclude = "rule")
 @Entity
 @Table(name = "rule_fields",
         uniqueConstraints = @UniqueConstraint(columnNames = {"rule_id", "field_name"}))
