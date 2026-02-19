@@ -8,11 +8,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @RestController
@@ -26,24 +28,31 @@ public class AuditController {
     public ResponseEntity<Page<AuditLogDto>> getAuditLogs(
             @RequestParam(required = false) String policyType,
             @RequestParam(required = false) UUID ruleId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<AuditLog> auditLogs;
+        Specification<AuditLog> spec = Specification.where(null);
 
         if (policyType != null) {
-            auditLogs = auditLogRepository.findByPolicyType(policyType, pageable);
-        } else if (ruleId != null) {
-            auditLogs = auditLogRepository.findByRuleId(ruleId, pageable);
-        } else if (dateFrom != null && dateTo != null) {
-            auditLogs = auditLogRepository.findByCreatedAtBetween(dateFrom, dateTo, pageable);
-        } else {
-            auditLogs = auditLogRepository.findAll(pageable);
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("policyType"), policyType));
         }
+        if (ruleId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("rule").get("id"), ruleId));
+        }
+        if (dateFrom != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("createdAt"), dateFrom.atStartOfDay()));
+        }
+        if (dateTo != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("createdAt"), dateTo.atTime(LocalTime.MAX)));
+        }
+
+        Page<AuditLog> auditLogs = auditLogRepository.findAll(spec, pageable);
 
         return ResponseEntity.ok(auditLogs.map(this::toDto));
     }

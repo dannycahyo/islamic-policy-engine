@@ -9,9 +9,7 @@ import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -66,7 +64,7 @@ public class Rule {
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("fieldOrder ASC")
     @Builder.Default
-    private List<RuleField> fields = new ArrayList<>();
+    private Set<RuleField> fields = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

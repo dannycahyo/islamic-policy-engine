@@ -76,7 +76,7 @@ public class PolicyEvaluationService {
                     ? kieBase.getFactType(RULES_PACKAGE, factTypeName)
                     : null;
 
-            List<RuleField> resultFieldDefs;
+            Collection<RuleField> resultFieldDefs;
 
             if (declaredFactType != null) {
                 // Dynamic evaluation using Drools declared types
@@ -95,7 +95,7 @@ public class PolicyEvaluationService {
 
                 resultFieldDefs = rule.getFields().stream()
                         .filter(f -> "RESULT".equals(f.getFieldCategory()))
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(java.util.stream.Collectors.toSet());
             } else {
                 // Legacy evaluation path: use FactMetadataService reflection (backward compat)
                 throw new RuntimeException("Rule '" + rule.getName() + "' has no factTypeName and no declared type. "
