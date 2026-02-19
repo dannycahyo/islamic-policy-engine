@@ -1,12 +1,13 @@
 import type {
   Rule,
+  RuleField,
   EvaluationResponse,
   AuditLog,
   PaginatedResponse,
   ErrorResponse,
-  PolicyType,
   FactMetadata,
   RuleDefinition,
+  PolicySchema,
 } from "./types";
 
 const BASE_URL =
@@ -58,7 +59,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function getRules(params?: {
-  policyType?: PolicyType;
+  policyType?: string;
   isActive?: boolean;
   page?: number;
   size?: number;
@@ -84,9 +85,11 @@ export function getRule(id: number | string): Promise<Rule> {
 export function createRule(data: {
   name: string;
   description: string;
-  policyType: PolicyType;
+  policyType: string;
   drlSource: string;
-  parameters: { key: string; value: string; type: string; description: string }[];
+  factTypeName?: string;
+  parameters?: { key: string; value: string; type: string; description: string }[];
+  fields?: RuleField[];
 }): Promise<Rule> {
   return request<Rule>("/api/v1/rules", {
     method: "POST",
@@ -97,10 +100,12 @@ export function createRule(data: {
 export function updateRule(
   id: number | string,
   data: {
-    name: string;
-    description: string;
-    drlSource: string;
-    parameters: { key: string; value: string; type: string; description: string }[];
+    name?: string;
+    description?: string;
+    drlSource?: string;
+    factTypeName?: string;
+    parameters?: { key: string; value: string; type: string; description: string }[];
+    fields?: RuleField[];
   }
 ): Promise<Rule> {
   return request<Rule>(`/api/v1/rules/${id}`, {
@@ -130,20 +135,30 @@ export function testRule(
 }
 
 export function evaluatePolicy(
-  policyType: PolicyType,
+  policyType: string,
   inputData: Record<string, unknown>
 ): Promise<EvaluationResponse> {
   return request<EvaluationResponse>(
     `/api/v1/policies/${policyType}/evaluate`,
     {
       method: "POST",
-      body: JSON.stringify({ policyType, inputData }),
+      body: JSON.stringify({ data: inputData }),
     }
   );
 }
 
+export function evaluateRule(
+  ruleId: number | string,
+  data: Record<string, unknown>
+): Promise<EvaluationResponse> {
+  return request<EvaluationResponse>(`/api/v1/rules/${ruleId}/evaluate`, {
+    method: "POST",
+    body: JSON.stringify({ data }),
+  });
+}
+
 export function getAuditLogs(params?: {
-  policyType?: PolicyType;
+  policyType?: string;
   ruleId?: number | string;
   dateFrom?: string;
   dateTo?: string;
@@ -167,6 +182,14 @@ export function getAuditLogs(params?: {
 
 export function getFactMetadata(): Promise<FactMetadata> {
   return request<FactMetadata>("/api/v1/rules/metadata");
+}
+
+export function getPolicySchema(policyType: string): Promise<PolicySchema> {
+  return request<PolicySchema>(`/api/v1/policies/${policyType}/schema`);
+}
+
+export function getRuleSchema(ruleId: number | string): Promise<PolicySchema> {
+  return request<PolicySchema>(`/api/v1/rules/${ruleId}/schema`);
 }
 
 export function generateDrl(

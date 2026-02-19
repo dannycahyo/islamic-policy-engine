@@ -18,9 +18,9 @@ import java.util.UUID;
 @EqualsAndHashCode(exclude = "rule")
 @ToString(exclude = "rule")
 @Entity
-@Table(name = "rule_parameters",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"rule_id", "param_key"}))
-public class RuleParameter {
+@Table(name = "rule_fields",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"rule_id", "field_name"}))
+public class RuleField {
 
     @Id
     @GeneratedValue
@@ -31,32 +31,27 @@ public class RuleParameter {
     @JoinColumn(name = "rule_id", nullable = false)
     private Rule rule;
 
-    @Column(name = "param_key", nullable = false, length = 100)
-    private String paramKey;
+    @Column(name = "field_name", nullable = false, length = 100)
+    private String fieldName;
 
-    @Column(name = "param_value", nullable = false, length = 500)
-    private String paramValue;
+    @Column(name = "field_type", nullable = false, length = 30)
+    private String fieldType;
 
-    @Column(name = "param_type", nullable = false, length = 20)
-    private String paramType;
+    @Column(name = "field_category", nullable = false, length = 10)
+    private String fieldCategory;
 
-    @Column(columnDefinition = "text")
-    private String description;
+    @Column(name = "enum_values", columnDefinition = "text")
+    private String enumValues;
+
+    @Column(name = "field_order", nullable = false)
+    @Builder.Default
+    private Integer fieldOrder = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

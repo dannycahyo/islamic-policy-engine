@@ -1,4 +1,4 @@
-import { PolicyType, POLICY_TYPE_LABELS } from "~/lib/types";
+import { POLICY_TYPE_LABELS } from "~/lib/types";
 
 export function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
@@ -19,18 +19,20 @@ export function StatusBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
-const POLICY_TYPE_COLORS: Record<PolicyType, string> = {
-  [PolicyType.TRANSACTION_LIMIT]: "bg-blue-100 text-blue-800",
-  [PolicyType.FINANCING_ELIGIBILITY]: "bg-purple-100 text-purple-800",
-  [PolicyType.RISK_FLAG]: "bg-amber-100 text-amber-800",
+const KNOWN_COLORS: Record<string, string> = {
+  TRANSACTION_LIMIT: "bg-blue-100 text-blue-800",
+  FINANCING_ELIGIBILITY: "bg-purple-100 text-purple-800",
+  RISK_FLAG: "bg-amber-100 text-amber-800",
 };
 
-export function PolicyTypeBadge({ policyType }: { policyType: PolicyType }) {
+export function PolicyTypeBadge({ policyType }: { policyType: string }) {
+  const colorClass = KNOWN_COLORS[policyType] || "bg-gray-100 text-gray-800";
+  const label = POLICY_TYPE_LABELS[policyType] || policyType;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${POLICY_TYPE_COLORS[policyType]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
     >
-      {POLICY_TYPE_LABELS[policyType]}
+      {label}
     </span>
   );
 }

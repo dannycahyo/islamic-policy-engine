@@ -3,9 +3,9 @@ package com.islamic.policyengine.controller;
 import com.islamic.policyengine.model.dto.EvaluationRequest;
 import com.islamic.policyengine.model.dto.EvaluationResponse;
 import com.islamic.policyengine.model.dto.FactMetadataDTO;
+import com.islamic.policyengine.model.dto.PolicySchemaDTO;
 import com.islamic.policyengine.model.dto.RuleDefinitionDTO;
 import com.islamic.policyengine.model.dto.RuleDto;
-import com.islamic.policyengine.model.enums.PolicyType;
 import com.islamic.policyengine.service.DrlGeneratorService;
 import com.islamic.policyengine.service.DrlValidationService;
 import com.islamic.policyengine.service.FactMetadataService;
@@ -34,7 +34,7 @@ public class RuleManagementController {
 
     @GetMapping
     public ResponseEntity<Page<RuleDto>> getRules(
-            @RequestParam(required = false) PolicyType policyType,
+            @RequestParam(required = false) String policyType,
             @RequestParam(required = false) Boolean isActive,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -104,5 +104,18 @@ public class RuleManagementController {
                                                         @RequestBody EvaluationRequest request) {
         EvaluationResponse response = policyEvaluationService.testRuleById(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/evaluate")
+    public ResponseEntity<EvaluationResponse> evaluateRule(@PathVariable UUID id,
+                                                            @RequestBody EvaluationRequest request) {
+        EvaluationResponse response = policyEvaluationService.evaluateRuleById(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/schema")
+    public ResponseEntity<PolicySchemaDTO> getRuleSchema(@PathVariable UUID id) {
+        PolicySchemaDTO schema = policyEvaluationService.getSchemaByRuleId(id);
+        return ResponseEntity.ok(schema);
     }
 }

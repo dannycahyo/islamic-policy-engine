@@ -4,37 +4,45 @@ import {
   isRouteErrorResponse,
 } from "react-router";
 import type { Route } from "./+types/_layout.audit";
-import { getAuditLogs } from "~/lib/api";
-import { PolicyType, POLICY_TYPE_LABELS } from "~/lib/types";
+import { getAuditLogs, getRules } from "~/lib/api";
+import { POLICY_TYPE_LABELS } from "~/lib/types";
 import type { AuditLog, PaginatedResponse } from "~/lib/types";
 import { AuditTable } from "~/components/AuditTable";
 
 interface AuditPageData {
   logs: PaginatedResponse<AuditLog>;
+  policyTypes: string[];
   error?: string;
 }
 
 export async function loader({ request }: Route.LoaderArgs): Promise<AuditPageData> {
   const url = new URL(request.url);
-  const policyType = url.searchParams.get("policyType") as PolicyType | null;
+  const policyType = url.searchParams.get("policyType");
   const ruleId = url.searchParams.get("ruleId");
   const dateFrom = url.searchParams.get("dateFrom");
   const dateTo = url.searchParams.get("dateTo");
   const page = Number(url.searchParams.get("page") || "0");
 
   try {
-    const logs = await getAuditLogs({
-      policyType: policyType || undefined,
-      ruleId: ruleId || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      page,
-      size: 20,
-    });
-    return { logs };
+    const [logs, rulesRes] = await Promise.all([
+      getAuditLogs({
+        policyType: policyType || undefined,
+        ruleId: ruleId || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        page,
+        size: 20,
+      }),
+      getRules({ size: 100 }),
+    ]);
+    const policyTypes = Array.from(
+      new Set(rulesRes.content.map((r) => r.policyType))
+    ).sort();
+    return { logs, policyTypes };
   } catch {
     return {
       logs: { content: [], totalElements: 0, totalPages: 0, number: 0 },
+      policyTypes: [],
       error: "Unable to load audit logs. Is the backend running?",
     };
   }
@@ -97,9 +105,9 @@ export default function AuditPage() {
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           <option value="">All Policy Types</option>
-          {Object.values(PolicyType).map((type) => (
+          {data.policyTypes.map((type) => (
             <option key={type} value={type}>
-              {POLICY_TYPE_LABELS[type]}
+              {POLICY_TYPE_LABELS[type] || type}
             </option>
           ))}
         </select>

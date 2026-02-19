@@ -12,7 +12,6 @@ import type { Route } from "./+types/_layout.rules.$ruleId";
 import { getRule, updateRule, toggleRuleStatus } from "~/lib/api";
 import type { Rule } from "~/lib/types";
 import { StatusBadge, PolicyTypeBadge } from "~/components/StatusBadge";
-import { ParameterForm } from "~/components/ParameterForm";
 import type { LayoutContext } from "./_layout";
 
 interface RuleDetailData {
@@ -34,29 +33,13 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { success: true, message: `Rule ${isActive ? "activated" : "deactivated"}` };
   }
 
-  if (intent === "update-parameters") {
+  if (intent === "update-info") {
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
 
-    // Collect parameters from form
-    const parameters: { key: string; value: string; type: string; description: string }[] = [];
-    let i = 0;
-    while (formData.has(`parameters[${i}].key`)) {
-      parameters.push({
-        key: formData.get(`parameters[${i}].key`) as string,
-        value: formData.get(`parameters[${i}].value`) as string,
-        type: formData.get(`parameters[${i}].type`) as string,
-        description: formData.get(`parameters[${i}].description`) as string,
-      });
-      i++;
-    }
-
-    const drlSource = formData.get("drlSource") as string;
     await updateRule(params.ruleId, {
       name,
       description,
-      drlSource,
-      parameters,
     });
 
     return { success: true, message: "Rule updated successfully" };
@@ -102,6 +85,9 @@ export default function RuleDetailPage() {
     }
   }, [actionData, dispatch]);
 
+  const inputFields = (rule.fields ?? []).filter((f) => f.fieldCategory === "INPUT");
+  const resultFields = (rule.fields ?? []).filter((f) => f.fieldCategory === "RESULT");
+
   return (
     <div>
       {/* Breadcrumb */}
@@ -122,6 +108,9 @@ export default function RuleDetailPage() {
             <PolicyTypeBadge policyType={rule.policyType} />
             <StatusBadge isActive={rule.isActive} />
             <span className="text-xs text-gray-400">v{rule.version}</span>
+            {rule.factTypeName && (
+              <span className="text-xs text-gray-400">Fact: {rule.factTypeName}</span>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -159,11 +148,10 @@ export default function RuleDetailPage() {
         </div>
       </div>
 
-      {/* Parameter form */}
+      {/* Basic info form */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <Form method="post">
-          <input type="hidden" name="intent" value="update-parameters" />
-          <input type="hidden" name="drlSource" value={rule.drlSource} />
+          <input type="hidden" name="intent" value="update-info" />
 
           <div className="mb-4 grid gap-4 sm:grid-cols-2">
             <div>
@@ -192,11 +180,6 @@ export default function RuleDetailPage() {
             </div>
           </div>
 
-          <ParameterForm
-            initialParameters={rule.parameters}
-            name="parameters"
-          />
-
           <div className="mt-4 flex justify-end">
             <button
               type="submit"
@@ -207,6 +190,109 @@ export default function RuleDetailPage() {
             </button>
           </div>
         </Form>
+      </div>
+
+      {/* Field Schema (read-only) */}
+      {(inputFields.length > 0 || resultFields.length > 0) && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Field Schema</h2>
+
+          {inputFields.length > 0 && (
+            <div className="mb-4">
+              <h3 className="mb-2 text-sm font-medium text-gray-700">Input Fields</h3>
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Enum Values</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {inputFields.map((f) => (
+                      <tr key={f.fieldName}>
+                        <td className="px-4 py-2 text-sm text-gray-900">{f.fieldName}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{f.fieldType}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{f.enumValues?.join(", ") ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {resultFields.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-gray-700">Result Fields</h3>
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Enum Values</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {resultFields.map((f) => (
+                      <tr key={f.fieldName}>
+                        <td className="px-4 py-2 text-sm text-gray-900">{f.fieldName}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{f.fieldType}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{f.enumValues?.join(", ") ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* API Integration */}
+      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">API Integration</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          External services can discover this rule&apos;s field schema and evaluate policies via these endpoints.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Schema Discovery</h3>
+            <div className="rounded-lg bg-gray-900 p-3">
+              <code className="text-sm text-green-400">
+                GET /api/v1/policies/{rule.policyType}/schema
+              </code>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Returns input/result field definitions. Callers can cache and refresh periodically.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Evaluate Policy</h3>
+            <div className="rounded-lg bg-gray-900 p-3">
+              <code className="text-sm text-green-400">
+                POST /api/v1/policies/{rule.policyType}/evaluate
+              </code>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-gray-700">Sample curl</h3>
+            <div className="overflow-x-auto rounded-lg bg-gray-900 p-3">
+              <pre className="text-xs text-green-400">{`# 1. Discover schema
+curl -s /api/v1/policies/${rule.policyType}/schema | jq
+
+# 2. Evaluate
+curl -X POST /api/v1/policies/${rule.policyType}/evaluate \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify({ data: Object.fromEntries(inputFields.map((f) => [f.fieldName, f.fieldType === "INTEGER" ? 0 : f.fieldType === "BIG_DECIMAL" ? 0.0 : f.fieldType === "BOOLEAN" ? false : "value"])) }, null, 2)}'`}</pre>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Metadata */}

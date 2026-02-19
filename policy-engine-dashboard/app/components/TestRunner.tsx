@@ -1,6 +1,6 @@
 import { useReducer } from "react";
 import { useFetcher } from "react-router";
-import type { PolicyType, EvaluationResponse } from "~/lib/types";
+import type { EvaluationResponse, RuleField } from "~/lib/types";
 
 interface TestState {
   input: string;
@@ -17,37 +17,40 @@ function testReducer(state: TestState, action: TestAction): TestState {
   }
 }
 
-const SAMPLE_INPUTS: Record<string, string> = {
-  TRANSACTION_LIMIT: JSON.stringify(
-    {
-      accountTier: "GOLD",
-      transactionAmount: 5000.0,
-      dailyCumulativeAmount: 10000.0,
-    },
-    null,
-    2
-  ),
-  FINANCING_ELIGIBILITY: JSON.stringify(
-    {
-      age: 30,
-      monthlyIncome: 8000.0,
-      accountStatus: "ACTIVE",
-      requestedAmount: 50000.0,
-    },
-    null,
-    2
-  ),
-  RISK_FLAG: JSON.stringify(
-    {
-      transactionAmount: 25000.0,
-      destinationRegion: "MY",
-      transactionFrequency: 5,
-      isNewBeneficiary: true,
-    },
-    null,
-    2
-  ),
-};
+function generateSampleInput(fields: RuleField[]): string {
+  const inputFields = fields.filter((f) => f.fieldCategory === "INPUT");
+  if (inputFields.length === 0) return "{}";
+
+  const sample: Record<string, unknown> = {};
+  for (const field of inputFields) {
+    switch (field.fieldType) {
+      case "STRING":
+        sample[field.fieldName] = "example";
+        break;
+      case "INTEGER":
+        sample[field.fieldName] = 0;
+        break;
+      case "BIG_DECIMAL":
+        sample[field.fieldName] = 0.0;
+        break;
+      case "BOOLEAN":
+        sample[field.fieldName] = false;
+        break;
+      case "ENUM":
+        sample[field.fieldName] =
+          field.enumValues && field.enumValues.length > 0
+            ? field.enumValues[0]
+            : "VALUE";
+        break;
+      case "LIST_STRING":
+        sample[field.fieldName] = [];
+        break;
+      default:
+        sample[field.fieldName] = null;
+    }
+  }
+  return JSON.stringify(sample, null, 2);
+}
 
 interface ActionData {
   success: boolean;
@@ -57,14 +60,14 @@ interface ActionData {
 
 export function TestRunner({
   ruleId,
-  policyType,
+  fields,
 }: {
   ruleId: string | number;
-  policyType: PolicyType;
+  fields: RuleField[];
 }) {
   const fetcher = useFetcher<ActionData>();
   const [state, dispatch] = useReducer(testReducer, {
-    input: SAMPLE_INPUTS[policyType] || "{}",
+    input: generateSampleInput(fields),
   });
 
   const isLoading = fetcher.state !== "idle";

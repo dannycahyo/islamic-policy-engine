@@ -10,16 +10,15 @@ import {
 } from "react-router";
 import { useReducer, useEffect } from "react";
 import type { Route } from "./+types/_layout.rules.$ruleId.drl";
-import { getRule, updateRule, getFactMetadata } from "~/lib/api";
-import type { Rule, FactMetadata } from "~/lib/types";
-import { POLICY_TYPE_TO_FACT } from "~/lib/types";
+import { getRule, updateRule } from "~/lib/api";
+import type { Rule, RuleField } from "~/lib/types";
 import { DrlEditor } from "~/components/DrlEditor";
+import { FieldSchemaBuilder } from "~/components/FieldSchemaBuilder";
 import { ConditionBuilder } from "~/components/ConditionBuilder";
 import type { LayoutContext } from "./_layout";
 
 interface DrlPageData {
   rule: Rule;
-  metadata: FactMetadata;
 }
 
 type EditorMode = "visual" | "code";
@@ -29,13 +28,20 @@ interface DrlState {
   validationError: string | null;
   editorMode: EditorMode;
   validating: boolean;
+  inputFields: RuleField[];
+  resultFields: RuleField[];
 }
 
 type DrlAction =
   | { type: "SET_SOURCE"; value: string }
   | { type: "SET_VALIDATION_ERROR"; error: string | null }
   | { type: "SET_EDITOR_MODE"; mode: EditorMode }
-  | { type: "SET_VALIDATING"; value: boolean };
+  | { type: "SET_VALIDATING"; value: boolean }
+  | {
+      type: "SET_FIELDS";
+      inputFields: RuleField[];
+      resultFields: RuleField[];
+    };
 
 function drlReducer(state: DrlState, action: DrlAction): DrlState {
   switch (action.type) {
@@ -51,35 +57,47 @@ function drlReducer(state: DrlState, action: DrlAction): DrlState {
       return { ...state, editorMode: action.mode };
     case "SET_VALIDATING":
       return { ...state, validating: action.value };
+    case "SET_FIELDS":
+      return {
+        ...state,
+        inputFields: action.inputFields,
+        resultFields: action.resultFields,
+      };
     default:
       return state;
   }
 }
 
+function generateFactTypeName(ruleName: string): string {
+  if (!ruleName.trim()) return "NewRuleFact";
+  return (
+    ruleName
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join("") + "Fact"
+  );
+}
+
 export async function loader({
   params,
 }: Route.LoaderArgs): Promise<DrlPageData> {
-  const [rule, metadata] = await Promise.all([
-    getRule(params.ruleId),
-    getFactMetadata(),
-  ]);
-  return { rule, metadata };
+  const rule = await getRule(params.ruleId);
+  return { rule };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const drlSource = formData.get("drlSource") as string;
-  const name = formData.get("ruleName") as string;
-  const description = formData.get("ruleDescription") as string;
-  const parametersJson = formData.get("ruleParameters") as string;
+  const fieldsJson = formData.get("ruleFields") as string;
+  const factTypeName = formData.get("factTypeName") as string;
 
   try {
-    const parameters = JSON.parse(parametersJson || "[]");
+    const fields: RuleField[] = JSON.parse(fieldsJson || "[]");
     await updateRule(params.ruleId, {
-      name,
-      description,
       drlSource,
-      parameters,
+      factTypeName,
+      fields,
     });
     return { success: true, message: "DRL source saved successfully" };
   } catch (err) {
@@ -110,17 +128,26 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function DrlEditorPage() {
-  const { rule, metadata } = useLoaderData<DrlPageData>();
+  const { rule } = useLoaderData<DrlPageData>();
   const actionData = useActionData<{ success: boolean; message: string }>();
   const navigation = useNavigation();
   const { dispatch } = useOutletContext<LayoutContext>();
   const isSubmitting = navigation.state === "submitting";
+
+  const existingInputFields = (rule.fields ?? []).filter(
+    (f) => f.fieldCategory === "INPUT"
+  );
+  const existingResultFields = (rule.fields ?? []).filter(
+    (f) => f.fieldCategory === "RESULT"
+  );
 
   const [state, drlDispatch] = useReducer(drlReducer, {
     drlSource: rule.drlSource || "",
     validationError: null,
     editorMode: "code" as EditorMode,
     validating: false,
+    inputFields: existingInputFields,
+    resultFields: existingResultFields,
   });
 
   const validateFetcher = useFetcher<{ valid: boolean; errors: string[] }>();
@@ -158,8 +185,11 @@ export default function DrlEditorPage() {
     }
   }, [validateFetcher.data, dispatch]);
 
-  const factType =
-    POLICY_TYPE_TO_FACT[rule.policyType] ?? "TransactionFact";
+  const factType = rule.factTypeName || generateFactTypeName(rule.name);
+  const allFields: RuleField[] = [
+    ...state.inputFields,
+    ...state.resultFields,
+  ];
 
   function handleValidate() {
     if (!state.drlSource.trim()) {
@@ -235,16 +265,11 @@ export default function DrlEditorPage() {
 
       <Form method="post">
         <input type="hidden" name="drlSource" value={state.drlSource} />
-        <input type="hidden" name="ruleName" value={rule.name} />
+        <input type="hidden" name="factTypeName" value={factType} />
         <input
           type="hidden"
-          name="ruleDescription"
-          value={rule.description}
-        />
-        <input
-          type="hidden"
-          name="ruleParameters"
-          value={JSON.stringify(rule.parameters)}
+          name="ruleFields"
+          value={JSON.stringify(allFields)}
         />
 
         {state.editorMode === "visual" ? (
@@ -256,11 +281,23 @@ export default function DrlEditorPage() {
                 conditions and actions below.
               </p>
             </div>
+            <FieldSchemaBuilder
+              initialInputFields={existingInputFields}
+              initialResultFields={existingResultFields}
+              onChange={(inputFields, resultFields) =>
+                drlDispatch({
+                  type: "SET_FIELDS",
+                  inputFields,
+                  resultFields,
+                })
+              }
+            />
             <ConditionBuilder
-              metadata={metadata}
+              inputFields={state.inputFields}
+              resultFields={state.resultFields}
               ruleName={rule.name}
               policyType={rule.policyType}
-              initialFactType={factType}
+              factType={factType}
               onDrlChange={(drl) =>
                 drlDispatch({ type: "SET_SOURCE", value: drl })
               }

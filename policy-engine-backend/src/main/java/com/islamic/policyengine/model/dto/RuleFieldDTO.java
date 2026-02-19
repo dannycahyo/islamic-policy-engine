@@ -6,14 +6,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FactMetadataDTO {
+public class RuleFieldDTO {
 
-    private Map<String, List<String>> operators;
-    private List<String> fieldTypes;
+    private String fieldName;
+    private String fieldType;
+    private String fieldCategory;
+    private List<String> enumValues;
+    private Integer fieldOrder;
 }

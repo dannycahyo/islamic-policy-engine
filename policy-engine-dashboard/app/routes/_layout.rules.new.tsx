@@ -5,39 +5,47 @@ import {
   useActionData,
   useNavigation,
   useOutletContext,
-  useLoaderData,
   useFetcher,
   isRouteErrorResponse,
 } from "react-router";
 import { useReducer, useEffect, useRef } from "react";
 import type { Route } from "./+types/_layout.rules.new";
-import { createRule, getFactMetadata } from "~/lib/api";
-import {
-  PolicyType,
-  POLICY_TYPE_LABELS,
-  POLICY_TYPE_TO_FACT,
-} from "~/lib/types";
-import type { RuleParameter, FactMetadata } from "~/lib/types";
-import { ParameterForm } from "~/components/ParameterForm";
+import { createRule } from "~/lib/api";
+import type { RuleField } from "~/lib/types";
+import { FieldSchemaBuilder } from "~/components/FieldSchemaBuilder";
 import { ConditionBuilder } from "~/components/ConditionBuilder";
 import type { LayoutContext } from "./_layout";
 
-interface LoaderData {
-  metadata: FactMetadata;
+function generateFactTypeName(ruleName: string): string {
+  if (!ruleName.trim()) return "NewRuleFact";
+  return (
+    ruleName
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join("") + "Fact"
+  );
 }
 
 interface FormState {
   drlSource: string;
-  policyType: PolicyType;
+  policyType: string;
   ruleName: string;
+  inputFields: RuleField[];
+  resultFields: RuleField[];
   validating: boolean;
   validationErrors: string[];
 }
 
 type FormAction =
   | { type: "SET_DRL"; value: string }
-  | { type: "SET_POLICY_TYPE"; value: PolicyType }
+  | { type: "SET_POLICY_TYPE"; value: string }
   | { type: "SET_RULE_NAME"; value: string }
+  | {
+      type: "SET_FIELDS";
+      inputFields: RuleField[];
+      resultFields: RuleField[];
+    }
   | { type: "SET_VALIDATING"; value: boolean }
   | { type: "SET_VALIDATION_ERRORS"; errors: string[] };
 
@@ -49,6 +57,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
       return { ...state, policyType: action.value };
     case "SET_RULE_NAME":
       return { ...state, ruleName: action.value };
+    case "SET_FIELDS":
+      return {
+        ...state,
+        inputFields: action.inputFields,
+        resultFields: action.resultFields,
+      };
     case "SET_VALIDATING":
       return { ...state, validating: action.value };
     case "SET_VALIDATION_ERRORS":
@@ -58,38 +72,24 @@ function formReducer(state: FormState, action: FormAction): FormState {
   }
 }
 
-export async function loader(): Promise<LoaderData> {
-  const metadata = await getFactMetadata();
-  return { metadata };
-}
-
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
-  const policyType = formData.get("policyType") as PolicyType;
+  const policyType = formData.get("policyType") as string;
   const drlSource = formData.get("drlSource") as string;
-
-  // Collect parameters
-  const parameters: RuleParameter[] = [];
-  let i = 0;
-  while (formData.has(`parameters[${i}].key`)) {
-    parameters.push({
-      key: formData.get(`parameters[${i}].key`) as string,
-      value: formData.get(`parameters[${i}].value`) as string,
-      type: formData.get(`parameters[${i}].type`) as string,
-      description: formData.get(`parameters[${i}].description`) as string,
-    });
-    i++;
-  }
+  const factTypeName = formData.get("factTypeName") as string;
+  const fieldsJson = formData.get("fields") as string;
 
   try {
+    const fields: RuleField[] = JSON.parse(fieldsJson || "[]");
     const rule = await createRule({
       name,
       description,
       policyType,
       drlSource,
-      parameters,
+      factTypeName,
+      fields,
     });
     return redirect(`/rules/${rule.id}`);
   } catch (err) {
@@ -120,17 +120,17 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function NewRulePage() {
-  const { metadata } = useLoaderData<LoaderData>();
   const actionData = useActionData<{ success: boolean; message: string }>();
   const navigation = useNavigation();
   const { dispatch } = useOutletContext<LayoutContext>();
   const isSubmitting = navigation.state === "submitting";
 
-  const defaultPolicyType = PolicyType.TRANSACTION_LIMIT;
   const [state, formDispatch] = useReducer(formReducer, {
     drlSource: "",
-    policyType: defaultPolicyType,
+    policyType: "",
     ruleName: "",
+    inputFields: [],
+    resultFields: [],
     validating: false,
     validationErrors: [],
   });
@@ -166,7 +166,12 @@ export default function NewRulePage() {
     }
   }, [validateFetcher.data, dispatch]);
 
-  const factType = POLICY_TYPE_TO_FACT[state.policyType] ?? "TransactionFact";
+  const factType = generateFactTypeName(state.ruleName);
+
+  const allFields: RuleField[] = [
+    ...state.inputFields,
+    ...state.resultFields,
+  ];
 
   function handleValidate() {
     if (!state.drlSource.trim()) {
@@ -229,7 +234,7 @@ export default function NewRulePage() {
                   })
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                placeholder="e.g., Gold Tier Transaction Limit"
+                placeholder="e.g., Loan Eligibility Check"
               />
             </div>
             <div>
@@ -239,25 +244,27 @@ export default function NewRulePage() {
               >
                 Policy Type
               </label>
-              <select
+              <input
                 id="new-rule-policy-type"
+                type="text"
                 name="policyType"
                 required
                 value={state.policyType}
                 onChange={(e) =>
                   formDispatch({
                     type: "SET_POLICY_TYPE",
-                    value: e.target.value as PolicyType,
+                    value: e.target.value,
                   })
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {Object.values(PolicyType).map((type) => (
-                  <option key={type} value={type}>
-                    {POLICY_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </select>
+                placeholder="e.g., LOAN_ELIGIBILITY"
+                list="policy-type-suggestions"
+              />
+              <datalist id="policy-type-suggestions">
+                <option value="TRANSACTION_LIMIT" />
+                <option value="FINANCING_ELIGIBILITY" />
+                <option value="RISK_FLAG" />
+              </datalist>
             </div>
             <div className="sm:col-span-2">
               <label
@@ -277,18 +284,33 @@ export default function NewRulePage() {
           </div>
         </div>
 
-        {/* Parameters */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <ParameterForm initialParameters={[]} name="parameters" />
-        </div>
+        {/* Field Schema Builder */}
+        <FieldSchemaBuilder
+          onChange={(inputFields, resultFields) =>
+            formDispatch({
+              type: "SET_FIELDS",
+              inputFields,
+              resultFields,
+            })
+          }
+        />
+
+        {/* Hidden fields for form submission */}
+        <input type="hidden" name="drlSource" value={state.drlSource} />
+        <input type="hidden" name="factTypeName" value={factType} />
+        <input
+          type="hidden"
+          name="fields"
+          value={JSON.stringify(allFields)}
+        />
 
         {/* Visual Rule Builder */}
-        <input type="hidden" name="drlSource" value={state.drlSource} />
         <ConditionBuilder
-          metadata={metadata}
+          inputFields={state.inputFields}
+          resultFields={state.resultFields}
           ruleName={state.ruleName || "New Rule"}
           policyType={state.policyType}
-          initialFactType={factType}
+          factType={factType}
           onDrlChange={(drl) =>
             formDispatch({ type: "SET_DRL", value: drl })
           }

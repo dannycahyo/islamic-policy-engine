@@ -1,9 +1,3 @@
-export enum PolicyType {
-  TRANSACTION_LIMIT = "TRANSACTION_LIMIT",
-  FINANCING_ELIGIBILITY = "FINANCING_ELIGIBILITY",
-  RISK_FLAG = "RISK_FLAG",
-}
-
 export interface RuleParameter {
   key: string;
   value: string;
@@ -11,26 +5,35 @@ export interface RuleParameter {
   description: string;
 }
 
+export interface RuleField {
+  fieldName: string;
+  fieldType: "STRING" | "INTEGER" | "BIG_DECIMAL" | "BOOLEAN" | "ENUM" | "LIST_STRING";
+  fieldCategory: "INPUT" | "RESULT";
+  enumValues?: string[];
+  fieldOrder: number;
+}
+
 export interface Rule {
   id: number;
   name: string;
   description: string;
-  policyType: PolicyType;
+  policyType: string;
   drlSource: string;
   isActive: boolean;
   version: number;
+  factTypeName?: string;
   parameters: RuleParameter[];
+  fields: RuleField[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface EvaluationRequest {
-  policyType: PolicyType;
-  inputData: Record<string, unknown>;
+  data: Record<string, unknown>;
 }
 
 export interface EvaluationResponse {
-  policyType: PolicyType;
+  policyType: string;
   ruleId: number;
   ruleVersion: number;
   result: Record<string, unknown>;
@@ -40,7 +43,7 @@ export interface EvaluationResponse {
 
 export interface AuditLog {
   id: number;
-  policyType: PolicyType;
+  policyType: string;
   ruleId: number;
   ruleVersion: number;
   inputData: Record<string, unknown>;
@@ -64,30 +67,30 @@ export interface ErrorResponse {
   timestamp: string;
 }
 
-export const POLICY_TYPE_LABELS: Record<PolicyType, string> = {
-  [PolicyType.TRANSACTION_LIMIT]: "Transaction Limit",
-  [PolicyType.FINANCING_ELIGIBILITY]: "Financing Eligibility",
-  [PolicyType.RISK_FLAG]: "Risk Flag",
+export const POLICY_TYPE_LABELS: Record<string, string> = {
+  TRANSACTION_LIMIT: "Transaction Limit",
+  FINANCING_ELIGIBILITY: "Financing Eligibility",
+  RISK_FLAG: "Risk Flag",
 };
 
 // Visual Rule Builder types
 
-export interface FieldDefinition {
-  type: string;
-  enumValues?: string[];
-}
+export const OPERATORS: Record<string, string[]> = {
+  BIG_DECIMAL: ["==", "!=", ">", "<", ">=", "<="],
+  INTEGER: ["==", "!=", ">", "<", ">=", "<="],
+  STRING: ["==", "!="],
+  BOOLEAN: ["=="],
+  ENUM: ["==", "!="],
+};
 
-export interface FactDefinition {
-  packageName: string;
-  inputFields: Record<string, FieldDefinition>;
-  resultFields: Record<string, FieldDefinition>;
-}
-
-export interface FactMetadata {
-  facts: Record<string, FactDefinition>;
-  operators: Record<string, string[]>;
-  policyTypes: string[];
-}
+export const SUPPORTED_FIELD_TYPES = [
+  "STRING",
+  "INTEGER",
+  "BIG_DECIMAL",
+  "BOOLEAN",
+  "ENUM",
+  "LIST_STRING",
+] as const;
 
 export interface ConditionRow {
   id: string;
@@ -110,10 +113,20 @@ export interface RuleDefinition {
   factType: string;
   conditions: { field: string; operator: string; value: string; valueType: string }[];
   actions: { field: string; value: string; valueType: string }[];
+  inputFields: RuleField[];
+  resultFields: RuleField[];
 }
 
-export const POLICY_TYPE_TO_FACT: Record<string, string> = {
-  TRANSACTION_LIMIT: "TransactionFact",
-  FINANCING_ELIGIBILITY: "FinancingRequestFact",
-  RISK_FLAG: "RiskAssessmentFact",
-};
+export interface FactMetadata {
+  operators: Record<string, string[]>;
+  fieldTypes: string[];
+}
+
+export interface PolicySchema {
+  policyType: string;
+  factTypeName: string;
+  ruleName: string;
+  ruleVersion: number;
+  inputFields: RuleField[];
+  resultFields: RuleField[];
+}

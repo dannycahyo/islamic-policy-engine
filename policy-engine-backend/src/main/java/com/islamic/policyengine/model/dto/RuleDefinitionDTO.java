@@ -18,4 +18,6 @@ public class RuleDefinitionDTO {
     private String factType;
     private List<ConditionDTO> conditions;
     private List<ActionDTO> actions;
+    private List<RuleFieldDTO> inputFields;
+    private List<RuleFieldDTO> resultFields;
 }

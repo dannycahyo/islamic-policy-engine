@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-create-rule-parameters-and-audit-log.yaml
   - include:
       file: db/changelog/003-seed-default-rules.yaml
+  - include:
+      file: db/changelog/004-add-rule-fields-and-dynamic-schema.yaml
