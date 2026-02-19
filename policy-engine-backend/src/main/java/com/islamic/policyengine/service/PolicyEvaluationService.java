@@ -152,7 +152,7 @@ public class PolicyEvaluationService {
         }
     }
 
-    private void setGlobals(KieSession session, List<RuleParameter> parameters) {
+    private void setGlobals(KieSession session, Collection<RuleParameter> parameters) {
         for (RuleParameter param : parameters) {
             Object value = castParameterValue(param);
             try {
